@@ -39,7 +39,8 @@ All data (players, settings, custom weapons, the current combat) is kept in the 
    - **Extra actions:** Celerity actions happen at the end of the turn, in order of initiative rating.
    - **Delay / Act now:** during the action step, **Delay** holds a character's action; **Act now** takes it at any later point.
 4. **New turn.** NPCs re-roll and players enter new totals. With *Keep initiative* on, scores carry over instead. Werewolves regenerate one level, and Celerity bought last turn takes effect.
-5. **Reset combat** keeps everyone but restores health, Willpower, blood, ammo, statuses and initiative, and sets the turn counter back to 1. **End combat** removes everyone.
+5. **📝 Notes** (next to the encounter name) opens the combat notes: location, who's who, special circumstances and rules for this fight. A new encounter starts with empty notes you can type into (saved as you type); an encounter link can fill them in. When there are notes they open formatted for reading; **✎ Edit** switches back to editing. A gold dot on the button means the encounter has notes.
+6. **Reset combat** keeps everyone but restores health, Willpower, blood, ammo, statuses and initiative, and sets the turn counter back to 1. **End combat** removes everyone.
 
 The header status line always shows what is happening ("▶ Inquisitor acts (15)"); hover it for the full explanation.
 
@@ -135,6 +136,7 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=<payload>
 |---|---|---|
 | `v` | number | Format version (currently `1`). Optional. |
 | `name` | string | Encounter name shown in the header. |
+| `notes` | string or array of strings | Combat notes: location, combatants, special circumstances and rules, shown in the **📝 Notes** dialog. An array is joined with line breaks (easier to write in JSON). Formatting: `# Heading`, `## Subheading`, `- bullet`, `**bold**`, `*italic*`, blank line for a new paragraph. |
 | `pcs` | `true` or array | `true` adds **all** of the opener's saved players. An array adds the named ones: `["Anna", "Mikkel"]`. Items can also be [player entries](#player-entries) (objects). |
 | `combatants` | array | The fight's entries (presets, players, custom), in any order. `npcs` is accepted as another name for it. |
 | `weapons` | array | Custom weapon definitions used by the entries (same fields as the *New weapon* form, plus a unique `id`). They are added to the opener's catalog if that `id` doesn't already exist. |
@@ -236,6 +238,27 @@ Unknown preset, player or weapon IDs are skipped. The tracker still loads everyt
     { "preset": "wk_faithful", "count": 2, "weapons": ["stake", "road_flare"] },
     { "preset": "wk_recruiter", "name": "Sister Joy" }
   ]
+}
+```
+
+**With combat notes** (an array keeps long notes readable in JSON):
+
+```json
+{
+  "name": "Warehouse on Pier 9",
+  "notes": [
+    "# Warehouse on Pier 9",
+    "Abandoned, 40 × 22 yards. Rain on the skylights; the lights are out.",
+    "",
+    "## Special rules",
+    "- Darkness away from the skylights: +1 difficulty on ranged attacks.",
+    "- The **Lieutenant** flees at Wounded; the Singers keep singing until Incapacitated.",
+    "",
+    "## Combatants",
+    "- *Brother Ash* holds the office. Three Singers stand in the moonlight."
+  ],
+  "pcs": true,
+  "combatants": [ { "preset": "wk_lieutenant", "name": "Brother Ash" }, { "preset": "wk_singer", "count": 3 } ]
 }
 ```
 

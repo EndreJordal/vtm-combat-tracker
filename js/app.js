@@ -331,7 +331,7 @@ let combat = load(STORE.combat, null) || newCombat();
 let logEntries = combat.log || [];
 
 function newCombat(name = '') {
-  return { name, round: 1, phase: 'setup', cursor: 0, combatants: [], log: [] };
+  return { name, notes: '', round: 1, phase: 'setup', cursor: 0, combatants: [], log: [] };
 }
 function persist() {
   combat.log = logEntries.slice(0, 200);
@@ -515,6 +515,9 @@ function resetCombat() {
  * ============================================================ */
 function render() {
   $('#encounterName').value = combat.name || '';
+  const hasNotes = !!(combat.notes || '').trim();
+  $('#btnNotes').classList.toggle('has-notes', hasNotes);
+  $('#btnNotes').title = hasNotes ? 'Combat notes (this encounter has notes)' : 'Combat notes: location, combatants, special circumstances and rules';
   renderTurnInfo();
   renderList();
   renderSidebar();
@@ -1626,7 +1629,7 @@ function b64urlDecode(s) {
 }
 
 function buildPayload({ includePCs = true, includeState = false } = {}) {
-  const payload = { v: 1, name: combat.name || undefined };
+  const payload = { v: 1, name: combat.name || undefined, notes: (combat.notes || '').trim() || undefined };
   const entries = [];
   const usedCustomWeapons = new Set();
   combat.combatants.forEach(c => {
@@ -1697,6 +1700,7 @@ function loadPayload(payload) {
   });
   save(STORE.weapons, customWeapons);
   const c2 = newCombat(payload.name || '');
+  c2.notes = Array.isArray(payload.notes) ? payload.notes.join('\n') : String(payload.notes ?? '');
   const missing = [];
   const list = [...(payload.combatants || []), ...(payload.npcs || [])];
   const pcEntries = payload.pcs === true ? pcs.map(p => ({ pc: p.name })) : (Array.isArray(payload.pcs) ? payload.pcs.map(n => (typeof n === 'string' ? { pc: n } : n)) : []);
@@ -1837,6 +1841,47 @@ async function checkUrlPayload() {
     // Keep the "not found" warning visible rather than replacing it with "Loaded".
     toast(missing.length ? `Loaded ${label} — not found: ${missing.join(', ')}` : `Loaded ${label}`, missing.length ? 7000 : 2600);
   } catch (err) { toast('Could not load encounter: ' + err.message, 5000); }
+}
+
+/* ---------- Combat notes ---------- */
+/* Light formatting for reading: # / ## headings, "- " bullets, **bold**, *italic*, blank line = new paragraph. */
+function notesHTML(text) {
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<i>$2</i>');
+  const out = []; let list = false;
+  for (const raw of String(text).split('\n')) {
+    const line = raw.trimEnd();
+    const bullet = line.match(/^\s*[-•]\s+(.*)$/);
+    if (bullet) { if (!list) { out.push('<ul>'); list = true; } out.push(`<li>${inline(bullet[1])}</li>`); continue; }
+    if (list) { out.push('</ul>'); list = false; }
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) out.push(`<h${h[1].length + 2}>${inline(h[2])}</h${h[1].length + 2}>`);
+    else if (!line.trim()) out.push('<div class="gap"></div>');
+    else out.push(`<p>${inline(line)}</p>`);
+  }
+  if (list) out.push('</ul>');
+  return out.join('');
+}
+function openNotes(editing = !(combat.notes || '').trim()) {
+  const m = openModal(`
+    <div class="modal-head"><h2>Combat notes${combat.name ? ' — ' + esc(combat.name) : ''}</h2>
+      ${editing ? '' : '<button class="btn sm right" id="nEdit">✎ Edit</button>'}
+      <button class="btn ghost ${editing ? 'right' : ''}" data-x title="Close (Esc)">✕</button></div>
+    <div class="modal-body notes-body">
+      ${editing
+        ? `<textarea id="nText" class="notes-text" placeholder="Location, combatants, special circumstances, special rules…&#10;&#10;# Headings, - bullets, **bold** and *italic* are shown formatted when reading.">${esc(combat.notes || '')}</textarea>
+           <div class="small faint" style="margin-top:6px">Saved as you type. Included in encounter links.</div>`
+        : `<div class="notes-view">${notesHTML(combat.notes)}</div>`}
+    </div>
+    <div class="modal-foot">${editing ? '<button class="btn primary" id="nDone">Done</button>' : '<button class="btn" data-x>Close</button>'}</div>`, { cls: 'notes' });
+  m.addEventListener('click', e => { if (e.target.closest('[data-x]')) closeModal(); });
+  const ta = $('#nText', m);
+  if (ta) {
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('input', () => { combat.notes = ta.value; persist(); renderTurnInfo(); render(); });
+    $('#nDone', m).onclick = () => { combat.notes = ta.value; commit(); closeModal(); if (combat.notes.trim()) openNotes(false); };
+  }
+  $('#nEdit', m)?.addEventListener('click', () => openNotes(true));
 }
 
 /* ---------- Settings ---------- */
@@ -2196,6 +2241,7 @@ $('#btnPlayers').onclick = openPlayers;
 $('#btnWeapons').onclick = openWeapons;
 $('#btnRules').onclick = openRules;
 $('#btnSettings').onclick = openSettings;
+$('#btnNotes').onclick = () => openNotes();
 $('#btnClear').onclick = async () => {
   if (combat.combatants.length && !(await ask('End combat and remove all combatants?', { ok: 'End combat', danger: true }))) return;
   combat = newCombat(); logEntries = []; commit();

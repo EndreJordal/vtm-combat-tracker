@@ -82,6 +82,20 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .turn-info .pill b { color: var(--gold); }
 .top-actions { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; align-items: center; }
 .btn.icon { padding: 5px 8px; min-width: 34px; }
+/* Notes button: gold dot when the encounter has notes */
+#btnNotes { position: relative; margin-left: 2px; }
+#btnNotes.has-notes::after { content: ""; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.modal.notes { width: min(820px, 100%); margin-block: auto; }
+.modal-backdrop.notes { padding-top: 12px; padding-bottom: 12px; }
+.notes-text { width: 100%; height: min(60vh, 460px); font: 14px/1.5 system-ui, "Segoe UI", sans-serif; padding: 10px 12px; }
+.notes-view { max-height: min(66vh, 520px); overflow-y: auto; font-size: 14px; line-height: 1.55; padding-right: 4px; }
+.notes-view h3, .notes-view h4, .notes-view h5 { color: var(--gold); font-family: Georgia, serif; margin: 10px 0 4px; }
+.notes-view h3 { font-size: 18px; } .notes-view h4 { font-size: 15px; } .notes-view h5 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+.notes-view p { margin: 0 0 4px; }
+.notes-view ul { margin: 2px 0 6px; padding-left: 20px; }
+.notes-view .gap { height: 8px; }
+.notes-view b { color: var(--text); }
+
 /* Gold dot on the Settings button while any house rule is on */
 #btnSettings { position: relative; }
 #btnSettings.has-rules::after { content: ""; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V:TM Combat Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⚜</span>
+      <input id="encounterName" class="encounter-name" placeholder="Unnamed encounter" aria-label="Encounter name">
+    </div>
+    <div class="turn-info" id="turnInfo"></div>
+    <div class="top-actions">
+      <button id="btnRollInit" class="btn primary" title="Roll initiative for all NPCs (1d10 + Dex + Wits − wounds). Players enter their own rolls on their cards.">Roll NPC initiative</button>
+      <button id="btnPrev" class="btn" title="Previous step">◀</button>
+      <button id="btnNext" class="btn primary" title="Next step">Next ▶</button>
+      <button id="btnNewRound" class="btn" title="End turn and start a new one">New turn</button>
+      <span class="sep"></span>
+      <button id="btnShare" class="btn" title="Create a link that starts this encounter">Share link</button>
+      <button id="btnPlayers" class="btn" title="Configure player characters">Players</button>
+      <button id="btnWeapons" class="btn" title="Weapon catalog">Weapons</button>
+      <button id="btnRules" class="btn" title="Combat rules quick reference">Rules</button>
+      <button id="btnReset" class="btn" title="Keep combatants; restore health, resources, ammo and initiative">Reset combat</button>
+      <button id="btnClear" class="btn danger" title="Remove all combatants">End combat</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="tracker">
+      <div id="phaseBanner" class="phase-banner"></div>
+      <div id="combatList" class="combat-list"></div>
+    </section>
+
+    <aside class="sidebar">
+      <nav class="tabs" id="sideTabs">
+        <button data-tab="antagonists" class="active">Antagonists</button>
+        <button data-tab="players">Players</button>
+        <button data-tab="custom">Custom</button>
+        <button data-tab="dice">Dice</button>
+        <button data-tab="log">Log</button>
+      </nav>
+      <div class="tab-body" id="tab-antagonists"></div>
+      <div class="tab-body hidden" id="tab-players"></div>
+      <div class="tab-body hidden" id="tab-custom"></div>
+      <div class="tab-body hidden" id="tab-dice"></div>
+      <div class="tab-body hidden" id="tab-log"></div>
+    </aside>
+  </main>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

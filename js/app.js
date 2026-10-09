@@ -248,6 +248,7 @@ const disc = (c, k) => trait(c.disc, k);
 const armorOf = c => ARMOR[clamp(c.armor, 0, 5)] || ARMOR[0];
 const isOut = c => c.state !== 'active';
 const canAct = c => !isOut(c) && !woundInfo(c).incap && !c.st.staked;
+const inFight = c => !c.inactive; // deactivated combatants wait in the Inactive section
 
 function initRating(c) {
   return eff(c, 'dex') + eff(c, 'wit') - woundInfo(c).pen - (c.st.knockdown ? 2 : 0);
@@ -337,7 +338,7 @@ function persist() {
   combat.log = logEntries.slice(0, 200);
   save(STORE.combat, combat);
 }
-function commit() { syncAutoCollapse(); persist(); render(); }
+function commit() { realignCursor(); syncAutoCollapse(); persist(); render(); }
 /* "Keep inactive collapsed": whenever the active character changes, collapse everyone else and
  * open the active one. Cards opened by hand stay open until the next change of active character. */
 function syncAutoCollapse(force = false) {
@@ -367,6 +368,7 @@ function uniqueName(base) {
 function addCombatant(c) {
   c.name = uniqueName(c.name);
   if (settings.autoCollapse) c.collapsed = true; // newcomers join collapsed; only the active character is open
+  pinCursor();
   combat.combatants.push(c);
   // NPCs joining after NPC initiative was rolled get rolled right away; players enter their own.
   const npcRolled = combat.phase !== 'setup' || combat.combatants.some(x => x !== c && x.side === 'npc' && x.init);
@@ -392,34 +394,52 @@ function rollInit(c, dieValue) {
 }
 /* NPCs roll digitally; players roll their own dice and enter the result on their card. */
 function rollNpcInit() {
-  const npcs = combat.combatants.filter(c => c.side === 'npc');
-  npcs.forEach(c => rollInit(c));
+  const midFight = combat.phase !== 'setup';
+  // Inactive NPCs roll too, so you can see where they'll slot in when they join.
+  const npcs = combat.combatants.filter(c => c.side === 'npc' && (!midFight || !c.init));
+  keepCursor(() => npcs.forEach(c => rollInit(c)));
   const rolled = npcs.filter(c => c.init);
   if (rolled.length) log(`<b>NPC initiative</b> turn ${combat.round}: ` + rolled.map(c => `${esc(c.name)} ${c.init.total}`).join(', '));
 }
 // Everyone able to act must have an initiative score before the turn can start.
-const pendingInit = () => combat.combatants.filter(c => canAct(c) && !c.init);
+const pendingInit = () => combat.combatants.filter(c => inFight(c) && canAct(c) && !c.init);
+// Someone joined mid-turn without an initiative score: the turn can't move on until they have one.
+const blockedMidTurn = () => ['declare', 'act', 'extra'].includes(combat.phase) && pendingInit().length > 0;
 function startTurn() {
   combat.phase = 'declare';
   combat.cursor = 0;
   combat.combatants.forEach(c => (c.acted = false));
   log(`<b>Initiative order</b> turn ${combat.round}: ` + actors().map(c => `${esc(c.name)} ${c.init.total}`).join(', '));
   if (!phaseList().length) advancePhase();
+  pinCursor();
 }
+/* The cursor is an index into the phase list. When people join, leave or get a new score, the list
+ * reorders, so remember who is up and point the cursor back at them. */
+function pinCursor() { combat.curActorId = currentActor()?.id ?? null; }
+function realignCursor() {
+  const list = phaseList();
+  const i = list.findIndex(c => c.id === combat.curActorId);
+  if (i >= 0) combat.cursor = i;
+  else combat.cursor = Math.min(combat.cursor, Math.max(0, list.length - 1));
+  pinCursor();
+}
+function keepCursor(fn) { pinCursor(); fn(); realignCursor(); }
 
 /* Initiative order: highest total first; ties broken by rating, then simultaneous. */
 function ordered() {
-  const withInit = combat.combatants.filter(c => c.init && canAct(c))
+  const withInit = combat.combatants.filter(c => inFight(c) && c.init && canAct(c))
     .sort((a, b) => b.init.total - a.init.total || b.init.rating - a.init.rating);
-  const rest = combat.combatants.filter(c => !withInit.includes(c));
+  const rest = combat.combatants.filter(c => inFight(c) && !withInit.includes(c));
   return [...withInit, ...rest];
 }
+const inactiveList = () => combat.combatants.filter(c => !inFight(c))
+  .sort((a, b) => (b.init?.total ?? -99) - (a.init?.total ?? -99));
 const actors = () => ordered().filter(c => c.init && canAct(c));
 function phaseList(phase = combat.phase) {
   // NPC declarations are hidden, so only players declare (slowest first).
   if (phase === 'declare') return settings.skipDeclare ? [] : actors().filter(c => c.side === 'pc').reverse();
   if (phase === 'act') return actors();
-  if (phase === 'extra') return combat.combatants.filter(c => c.extraActions > 0 && canAct(c))
+  if (phase === 'extra') return combat.combatants.filter(c => inFight(c) && c.extraActions > 0 && canAct(c))
     .sort((a, b) => initRating(b) - initRating(a));
   return [];
 }
@@ -434,11 +454,13 @@ function next() {
     return commit();
   }
   if (combat.phase === 'end') { newTurn(); return commit(); }
+  if (blockedMidTurn()) return toast(`Roll initiative for ${pendingInit().map(c => c.name).join(', ')} before continuing.`);
   const list = phaseList();
   const cur = list[combat.cursor];
   if (combat.phase === 'act' && cur && !cur.st.delayed) cur.acted = true;
   combat.cursor++;
   if (combat.cursor >= list.length) advancePhase();
+  pinCursor();
   commit();
 }
 function advancePhase() {
@@ -461,6 +483,7 @@ function prev() {
     combat.phase = order[i];
     combat.cursor = Math.max(0, phaseList().length - 1);
   }
+  pinCursor();
   commit();
 }
 function newTurn() {
@@ -494,6 +517,7 @@ function newTurn() {
     combat.combatants.forEach(c => (c.init = null));
     rollNpcInit();
   }
+  pinCursor();
 }
 
 function resetCombat() {
@@ -529,14 +553,21 @@ function renderTurnInfo() {
   btnNext.textContent = combat.phase === 'setup' ? 'Start ▶' : combat.phase === 'end' ? 'New turn ▶' : 'Next ▶';
   $('#btnPrev').disabled = combat.phase === 'setup';
   const pending = pendingInit();
-  btnNext.disabled = combat.phase === 'setup' && (!combat.combatants.length || pending.length > 0);
+  const blocked = blockedMidTurn();
+  btnNext.disabled = (combat.phase === 'setup' && (!combat.combatants.length || pending.length > 0)) || blocked;
   btnNext.title = btnNext.disabled && pending.length ? `Waiting for initiative: ${pending.map(c => c.name).join(', ')}` : '';
+  const btnNew = $('#btnNewRound');
+  btnNew.disabled = !combat.combatants.length || blocked;
+  btnNew.title = blocked ? `Roll initiative for ${pending.map(c => c.name).join(', ')} first` : 'End turn and start a new one';
   const pendingNpc = pending.filter(c => c.side === 'npc').length;
   const pendingPcs = pending.filter(c => c.side === 'pc').map(c => c.name);
 
   // One-line status in the top bar (short text), with the full explanation as its tooltip.
   const cur = currentActor();
-  const status = {
+  const status = blocked ? [
+    `<span class="warn">Roll initiative for ${pending.map(c => `<b>${esc(c.name)}</b>`).join(', ')} to continue</span>`,
+    'A combatant joined mid-turn. Players type their total on the card; NPCs: press Roll NPC initiative (rolls only those without a score) or click their initiative box.',
+  ] : {
     setup: !combat.combatants.length ? ['', ''] : pending.length
       ? [`Waiting: ${[...pendingPcs.map(n => `<b>${esc(n)}</b>`), pendingNpc ? `${pendingNpc} NPC${pendingNpc > 1 ? 's' : ''} (Roll NPC initiative)` : ''].filter(Boolean).join(', ')}`,
          `Initiative = 1d10 + Dexterity + Wits − wounds. Type each player's total on their card${pendingNpc ? '; press Roll NPC initiative for the NPCs' : ''}.`]
@@ -573,7 +604,20 @@ function renderList() {
       declaring: cur === c && combat.phase === 'declare',
       sim,
     });
-  }).join('') + `<div class="small faint" style="text-align:center">Health: <span class="tag-b">╱ bashing</span> · <span class="tag-l">✕ lethal</span> · <span class="tag-a">✱ aggravated</span> · Keys: <code>N</code> next, <code>P</code> previous</div>`;
+  }).join('') + (() => {
+    const benched = inactiveList();
+    return benched.length ? `<div class="inactive-head">Inactive <span class="faint">· ${benched.length} waiting to join — ▶ activates</span></div>`
+      + benched.map(c => cardHTML(c, { joinHint: joinHint(c) })).join('') : '';
+  })() + `<div class="small faint" style="text-align:center">Health: <span class="tag-b">╱ bashing</span> · <span class="tag-l">✕ lethal</span> · <span class="tag-a">✱ aggravated</span> · Keys: <code>N</code> next, <code>P</code> previous</div>`;
+}
+
+/* Where an inactive combatant with a score would slot into the current order. */
+function joinHint(c) {
+  if (!c.init) return '';
+  const fighters = actors();
+  const ahead = fighters.filter(o => o.init.total > c.init.total || (o.init.total === c.init.total && o.init.rating >= c.init.rating));
+  if (!fighters.length) return `joins at ${c.init.total}`;
+  return ahead.length ? `joins after ${ahead[ahead.length - 1].name}` : 'joins first';
 }
 
 function dotsHTML(cur, max, cls, act, id) {
@@ -594,7 +638,10 @@ function cardHTML(c, ctx) {
   const wi = woundInfo(c);
   const lv = healthOf(c);
   const kind = KINDS[c.kind];
-  const classes = ['card', c.side, ctx.current && 'current', ctx.declaring && 'declaring', c.acted && 'acted', (isOut(c) || wi.incap) && 'out'].filter(Boolean).join(' ');
+  const classes = ['card', c.side, ctx.current && 'current', ctx.declaring && 'declaring', c.acted && 'acted', (isOut(c) || wi.incap) && 'out', c.inactive && 'inactive'].filter(Boolean).join(' ');
+  const benchBtn = c.inactive
+    ? `<button class="btn sm bench on" data-act="bench" data-id="${c.id}" title="Activate: join the fight${c.init ? ` (keeps initiative ${c.init.total})` : ' — needs an initiative score'}">▶</button>`
+    : `<button class="btn sm bench" data-act="bench" data-id="${c.id}" title="Deactivate: move to the Inactive section to join later (keeps any initiative score)">⏸</button>`;
 
   // Health boxes: aggravated first, then lethal, then bashing.
   const marks = [...Array(c.dmg.a).fill('a'), ...Array(c.dmg.l).fill('l'), ...Array(c.dmg.b).fill('b')];
@@ -667,7 +714,7 @@ function cardHTML(c, ctx) {
   const stateBadge = c.state === 'dead' ? `<span class="badge dead">${kind.torpor ? 'Final Death' : 'Dead'}</span>`
     : c.state === 'torpor' ? '<span class="badge state">Torpor</span>'
     : wi.incap ? '<span class="badge state">Incapacitated</span>' : '';
-  const delayBtn = combat.phase === 'act' && !isOut(c) && !c.acted
+  const delayBtn = combat.phase === 'act' && !isOut(c) && !c.acted && !c.inactive
     ? (c.st.delayed ? `<button class="btn sm on" data-act="actnow" data-id="${c.id}" title="Delayed character acts now (may interrupt)">Act now</button>`
       : `<button class="btn sm" data-act="status" data-s="delayed" data-id="${c.id}" title="Delay action">Delay</button>`) : '';
 
@@ -691,9 +738,10 @@ function cardHTML(c, ctx) {
     return `<article class="${classes} collapsed" data-id="${c.id}" data-act="collapse" title="Click to show the full card">
       <div class="c-init">${initBox}</div>
       <div class="c-left"><div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span></div></div>
+        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}</div></div>
       <div class="c-right"><div class="c-actions">
         ${delayBtn}
+        ${benchBtn}
         <button class="btn sm" data-act="edit" data-id="${c.id}" title="Edit stats & weapon loadout">✎</button>
         <button class="btn sm" data-act="dup" data-id="${c.id}" title="Duplicate">⧉</button>
         ${collapseBtn}
@@ -715,7 +763,7 @@ function cardHTML(c, ctx) {
 
     <div class="c-left">
       <div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>
+        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}
         ${stateBadge}${extraBadge}${celBadge}${c.acted ? '<span class="badge">acted</span>' : ''}${chips}
       </div>
       <div class="c-healthrow">
@@ -747,6 +795,7 @@ function cardHTML(c, ctx) {
     <div class="c-right">
       <div class="c-actions">
         ${delayBtn}
+        ${benchBtn}
         <button class="btn sm" data-act="edit" data-id="${c.id}" title="Edit stats & weapon loadout">✎</button>
         <button class="btn sm" data-act="dup" data-id="${c.id}" title="Duplicate">⧉</button>
         <button class="btn sm" data-act="expand" data-id="${c.id}" title="Details, statuses, blood boosts">${c.expanded ? '▴' : '▾'}</button>
@@ -1223,7 +1272,8 @@ let atk = null;
 function openAttack(attackerId, weaponIdx) {
   const a = byId(attackerId);
   if (!a) return;
-  const targets = combat.combatants.filter(c => c.id !== a.id);
+  if (a.inactive) return toast(`${a.name} is inactive — activate them (▶) to join the fight.`);
+  const targets = combat.combatants.filter(c => c.id !== a.id && inFight(c));
   const prevTarget = atk?.attackerId === a.id ? atk.targetId : null;
   const defaultTarget = (prevTarget && byId(prevTarget)) ? prevTarget
     : (targets.find(t => t.side !== a.side && !isOut(t)) || targets[0])?.id || null;
@@ -1370,7 +1420,7 @@ function renderAttack() {
     </div>`;
 
   // Targets: the other side first; "show all" adds same-side combatants.
-  const others = combat.combatants.filter(c => c.id !== a.id);
+  const others = combat.combatants.filter(c => c.id !== a.id && inFight(c));
   const opposing = others.filter(c => c.side !== a.side);
   const shown = atk.showAll || !opposing.length ? others : opposing;
   const targetChips = shown.map(x => {
@@ -1643,6 +1693,7 @@ function buildPayload({ includePCs = true, includeState = false } = {}) {
       if (!base || c.weapons.map(w => w.wid).join() !== base.weapons.map(w => w.wid).join()) e.weapons = c.weapons.map(w => w.wid);
       if (!base || c.armor !== base.armor) e.armor = c.armor;
       if (includeState) addState(e, c);
+      if (c.inactive) e.inactive = true;
       return entries.push(e);
     }
     const p = c.presetId && getPreset(c.presetId);
@@ -1667,10 +1718,12 @@ function buildPayload({ includePCs = true, includeState = false } = {}) {
       if (c.notes !== base.notes) e.notes = c.notes;
       if (includeState) addState(e, c);
       if (e.attrs) e.attrs = ATTR_KEYS.map(k => e.attrs[k]);
+      if (c.inactive) e.inactive = true;
       return entries.push(e);
     }
     const e = { custom: toTemplate(c) };
     if (includeState) addState(e.custom, c);
+    if (c.inactive) e.inactive = true;
     entries.push(e);
   });
   // Merge consecutive identical preset entries into a count.
@@ -1744,6 +1797,7 @@ function loadPayload(payload) {
           c = makeCombatant(e.custom || e);
         }
         if (!c) continue;
+        if (e.inactive) c.inactive = true; // starts in the Inactive section, joins later
         applyState(c, e.custom ? { ...e.custom, ...e } : e);
         addCombatant(c);
       }
@@ -2023,8 +2077,19 @@ document.addEventListener('click', e => {
   switch (act) {
     case 'addpreset': {
       const p = getPreset(el.dataset.p);
-      for (let i = 0; i < settings.addQty; i++) addCombatant(makeCombatant(presetTemplate(p)));
-      log(`Added ${settings.addQty > 1 ? settings.addQty + '× ' : ''}${esc(p.name)}`);
+      // Once the fight is under way, new antagonists wait in the Inactive section with a rolled score.
+      const midFight = combat.phase !== 'setup';
+      const added = [];
+      for (let i = 0; i < settings.addQty; i++) {
+        const c = makeCombatant(presetTemplate(p));
+        if (midFight) c.inactive = true;
+        added.push(addCombatant(c)); // NPCs added mid-fight roll initiative straight away
+      }
+      if (midFight) {
+        const scores = added.map(c => `${c.name}${c.init ? ' ' + c.init.total : ''}`).join(', ');
+        log(`Added to Inactive: ${esc(scores)}`);
+        toast(`Added to Inactive (${scores}) — press ▶ when they join.`, 4000);
+      } else log(`Added ${settings.addQty > 1 ? settings.addQty + '× ' : ''}${esc(p.name)}`);
       return commit();
     }
     case 'delpreset':
@@ -2074,6 +2139,19 @@ document.addEventListener('click', e => {
         commit();
       });
     case 'expand': c.expanded = !c.expanded; return commit();
+    case 'bench': {
+      keepCursor(() => { c.inactive = !c.inactive; c.st.delayed = false; });
+      if (c.inactive) log(`${esc(c.name)} leaves the fight (inactive).`);
+      else {
+        log(`<b>${esc(c.name)}</b> joins the fight${c.init ? ` at initiative ${c.init.total}` : ''}.`);
+        if (!c.init && ['declare', 'act', 'extra'].includes(combat.phase) && canAct(c)) {
+          toast(`${c.name} joined: ${c.side === 'pc' ? 'enter their initiative total' : 'roll their initiative'} before continuing.`, 4000);
+        }
+      }
+      commit();
+      if (!c.inactive && !c.init) $(`.init-input[data-id="${c.id}"]`)?.focus();
+      return;
+    }
     case 'collapse': c.collapsed = !c.collapsed; if (c.collapsed) c.expanded = false; return commit();
     case 'init':
       if (!canAct(c)) return toast(`${c.name} can't act.`);
@@ -2196,6 +2274,7 @@ document.addEventListener('change', e => {
 });
 function commitInitInput(el) {
   const c = byId(el.dataset.id); if (!c) return;
+  pinCursor();
   const raw = el.value.trim();
   if (raw === '') {
     if (c.side === 'npc') { rollInit(c); log(`${esc(c.name)} re-rolls initiative: ${c.init.total}`); }
@@ -2206,6 +2285,7 @@ function commitInitInput(el) {
     log(`${esc(c.name)} initiative ${v}`);
   }
   c._editInit = false;
+  realignCursor();
   commit();
   $('.init-input')?.focus(); // jump to the next player still waiting
 }

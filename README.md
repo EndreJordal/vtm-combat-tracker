@@ -39,8 +39,12 @@ All data (players, settings, custom weapons, the current combat) is kept in the 
    - **Extra actions:** Celerity actions happen at the end of the turn, in order of initiative rating.
    - **Delay / Act now:** during the action step, **Delay** holds a character's action; **Act now** takes it at any later point.
 4. **New turn.** NPCs re-roll and players enter new totals. With *Keep initiative* on, scores carry over instead. Werewolves regenerate one level, and Celerity bought last turn takes effect.
-5. **📝 Notes** (next to the encounter name) opens the combat notes: location, who's who, special circumstances and rules for this fight. A new encounter starts with empty notes you can type into (saved as you type); an encounter link can fill them in. When there are notes they open formatted for reading; **✎ Edit** switches back to editing. A gold dot on the button means the encounter has notes.
-6. **Reset combat** keeps everyone but restores health, Willpower, blood, ammo, statuses and initiative, and sets the turn counter back to 1. **End combat** removes everyone.
+5. **Joining mid-fight (⏸ / ▶).** Every card has a ⏸ button (left of ✎) that moves the combatant to the **Inactive** section below the fight. Set up reinforcements in advance and bench them; they don't block **Start ▶** and can't attack or be targeted. **Roll NPC initiative** rolls inactive NPCs too (and players can enter a total early), so the Inactive section shows where each will slot in, with a green *→ joins after …* badge. Antagonists added from the side panel **after the fight has started** go straight to Inactive with a rolled score. Press **▶** to bring one in at any time:
+   - With an initiative score, they slot straight into the order. The character currently acting stays the active one.
+   - Without one, **Next ▶** and **New turn** are greyed out and the header says *Roll initiative for … to continue*. A player types their total on their card; for NPCs, **Roll NPC initiative** rolls only those without a score, so nobody else's initiative changes. You can also click their initiative box.
+   - If they rolled higher than the character currently acting, their place this turn has already passed: use **Delay → Act now** on their card to have them act straight away.
+6. **📝 Notes** (next to the encounter name) opens the combat notes: location, who's who, special circumstances and rules for this fight. A new encounter starts with empty notes you can type into (saved as you type); an encounter link can fill them in. When there are notes they open formatted for reading; **✎ Edit** switches back to editing. A gold dot on the button means the encounter has notes.
+7. **Reset combat** keeps everyone but restores health, Willpower, blood, ammo, statuses and initiative, and sets the turn counter back to 1. **End combat** removes everyone.
 
 The header status line always shows what is happening ("▶ Inquisitor acts (15)"); hover it for the full explanation.
 
@@ -50,7 +54,7 @@ Each card has three groups:
 
 | Left | Middle | Right |
 |---|---|---|
-| Name and descriptor (`NPC · Vampire · Thin-Blood Singer`) | Willpower and Blood (or another pool such as Gnosis) | Buttons: Delay/Act now, ✎ edit, ⧉ duplicate, ▾ details, − collapse, ✕ remove |
+| Name and descriptor (`NPC · Vampire · Thin-Blood Singer`) | Willpower and Blood (or another pool such as Gnosis) | Buttons: Delay/Act now, ⏸/▶ deactivate/activate, ✎ edit, ⧉ duplicate, ▾ details, − collapse, ✕ remove |
 | Health boxes and current state | Equipment columns: **Unarmed · Melee · Ranged · Armor** | Stat block: attributes, combat Abilities, soak (armor included) and combat Disciplines |
 | **+B +L +A** (damage), **−B −L −A** (heal), **Mend** (1 blood heals 1 normal level), **Mend A** (5 blood heals 1 aggravated level) | | |
 
@@ -151,6 +155,7 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=<payload>
 |---|---|---|
 | `preset` | ID | Required. See [Preset antagonists](#preset-antagonists). Your own saved antagonists ("My Antagonists") also work, but their IDs exist only in your browser. |
 | `count` | 1–50 | How many copies. They are numbered automatically ("Thin-Blood Singer 2" …). |
+| `inactive` | boolean | `true` starts them in the **Inactive** section as reinforcements, to be brought in with ▶ during the fight. Works on every entry type. |
 | `name` | string | Rename. The descriptor keeps the preset name: `NPC · Vampire · Thin-Blood Singer`. |
 | `weapons` | array | **Replaces** the carried loadout. Items are weapon IDs, or `{ "id": "rifle", "ammo": 2 }` to set ammo. |
 | `favored` | array of IDs | Extra weapons listed at the top of the swap dropdowns, alongside the preset's own favorites. |
@@ -173,6 +178,7 @@ The name is matched, ignoring case, against the **opener's** saved players. A pl
 |---|---|
 | `pc` | Required. The player's name. |
 | `weapons`, `armor` | Override the saved loadout (Share link adds these automatically when a player's equipment changed during the fight). |
+| `inactive` | `true` starts the player in the Inactive section (for example, someone arriving late). |
 | state fields | See [State fields](#state-fields). |
 
 ### Custom entries
@@ -236,10 +242,13 @@ Unknown preset, player or weapon IDs are skipped. The tracker still loads everyt
     { "preset": "wk_singer", "count": 3 },
     { "preset": "wk_lieutenant", "name": "Brother Ash", "weapons": ["pistol_hvy", "fire_axe"], "armor": 3 },
     { "preset": "wk_faithful", "count": 2, "weapons": ["stake", "road_flare"] },
-    { "preset": "wk_recruiter", "name": "Sister Joy" }
+    { "preset": "wk_recruiter", "name": "Sister Joy" },
+    { "preset": "wk_exmil", "count": 2, "inactive": true }
   ]
 }
 ```
+
+The two ex-military ghouls at the end start **inactive**: reinforcements that come through the loading dock when you press ▶ on their cards.
 
 **With combat notes** (an array keeps long notes readable in JSON):
 

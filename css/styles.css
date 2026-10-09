@@ -204,6 +204,16 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .badge.chip { cursor: pointer; }
 .badge.chip.on { background: #3b2a12; color: #f2d08a; border-color: #8b6a2a; }
 
+/* Inactive section: combatants waiting to join */
+.inactive-head { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line-2); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); }
+.inactive-head .faint { text-transform: none; letter-spacing: 0; }
+.card.inactive { opacity: .7; border-style: dashed; border-left-style: solid; border-left-color: var(--line-2); }
+.card.inactive:hover { opacity: .95; }
+.btn.bench.on { color: var(--ok); border-color: #2f7a4f; }
+.badge.join { border-color: #2f7a4f; color: #9ff0c0; }
+.turn-info .status .warn { color: #ff9aab; }
+.turn-info .status .warn b { color: #ffd0d8; }
+
 /* Collapsed card: one slim row — small initiative box, name + creature, buttons */
 .card.collapsed { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "init left right"; padding: 3px 8px; gap: 0 10px; align-items: center; }
 .card.collapsed { cursor: pointer; }

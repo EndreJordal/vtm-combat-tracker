@@ -404,6 +404,17 @@ button.wchip { font: inherit; font-size: 12px; color: var(--text); }
 .log-entry .t { color: var(--faint); font-size: 10px; }
 .log-entry b { color: var(--text); }
 
+/* Weapon catalog */
+.wcat { margin-bottom: 14px; }
+.wcat h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); font-family: inherit; }
+.wcat h3 .faint { font-size: 11px; letter-spacing: 0; }
+.wcat table { table-layout: fixed; width: 100%; }
+.wcat th:first-child, .wcat td:first-child { width: auto; }
+.wcat th.num, .wcat td.num { width: 64px; text-align: center; }
+.wcat th:nth-child(3), .wcat td:nth-child(3) { width: 52px; }
+.wcat th.act, .wcat td.act { width: 92px; text-align: right; }
+.wcat .wname { font-weight: 600; color: var(--text); }
+
 /* Rules */
 .rules h3 { color: var(--gold); font-family: Georgia, serif; margin: 14px 0 6px; font-size: 15px; }
 .rules table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 4px 0 10px; }

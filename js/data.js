@@ -95,17 +95,84 @@ const WEAPONS = [
   { id: 'shotgun_semi', short: 'Semi-auto shotgun', name: 'Shotgun, Semi-auto', kind: 'ranged', base: 'fixed', mod: 8, type: 'gun', range: 20, rate: 3, clip: 9, conceal: 'T', builtin: true },
   { id: 'crossbow', name: 'Crossbow', kind: 'ranged', base: 'fixed', mod: 5, type: 'gun', range: 20, rate: 1, clip: 1, conceal: 'T', stake: true, reload: 5, builtin: true, quirk: 'stakes · 5-turn reload', notes: 'Five turns to reload. Bashing vs Kindred unless head/heart.' },
 
+  // Improvised weapons (Wakeners gear) — each uses the stats of the chart weapon it is "as"
+  { id: 'box_cutter', name: 'Box Cutter', kind: 'melee', base: 'str', mod: 1, type: 'L', conceal: 'P', builtin: true, source: 'Wakeners', notes: 'As knife.' },
+  { id: 'straight_razor', name: 'Straight Razor', kind: 'melee', base: 'str', mod: 1, type: 'L', conceal: 'P', builtin: true, source: 'Wakeners', notes: 'As knife.' },
+  { id: 'tire_iron', name: 'Tire Iron', kind: 'melee', base: 'str', mod: 2, type: 'blunt', conceal: 'T', builtin: true, source: 'Wakeners', quirk: 'lethal to head', notes: 'As club.' },
+  { id: 'baseball_bat', name: 'Baseball Bat', kind: 'melee', base: 'str', mod: 2, type: 'blunt', conceal: 'T', builtin: true, source: 'Wakeners', quirk: 'lethal to head', notes: 'As club.' },
+  { id: 'fire_axe', name: 'Fire Axe', kind: 'melee', base: 'str', mod: 3, type: 'L', conceal: 'N', builtin: true, source: 'Wakeners', notes: 'As axe.' },
+  { id: 'road_flare', short: 'Flare', name: 'Road Flare', kind: 'melee', base: 'fixed', mod: 1, type: 'fire', fireLevels: 1, heat: 5, builtin: true, source: 'Wakeners', quirk: 'fire · no armor', notes: 'Fire the size of a torch: 1 automatic aggravated level per turn, soaked only with Fortitude at difficulty 5.' },
+
+  // Homebrew additions — not in the core charts; stats follow the rulebook's scale
+  // (knife Str+1, sword Str+2, axe Str+3; firearm damage by calibre).
+  { id: 'katana', name: 'Katana', kind: 'melee', base: 'str', mod: 2, type: 'L', conceal: 'T', homebrew: true, quirk: 'parry +1 die', notes: 'A sword. The balanced blade gives +1 die when parrying.' },
+  { id: 'machete', name: 'Machete', kind: 'melee', base: 'str', mod: 2, type: 'L', conceal: 'T', homebrew: true, notes: 'As sword; cheap and common.' },
+  { id: 'switchblade', name: 'Switchblade', kind: 'melee', base: 'str', mod: 1, type: 'L', conceal: 'P', homebrew: true, notes: 'As knife, pocket-sized.' },
+  { id: 'broken_bottle', name: 'Broken Bottle', kind: 'melee', base: 'str', mod: 1, type: 'L', conceal: 'P', homebrew: true, quirk: 'improvised', notes: 'Improvised; shatters for good on a botch.' },
+  { id: 'silver_knife', name: 'Silver Knife', kind: 'melee', base: 'str', mod: 1, type: 'L', conceal: 'J', silver: true, homebrew: true, quirk: 'silver', notes: 'Werewolves cannot soak silver and cannot regenerate it quickly.' },
+  { id: 'brass_knuckles', short: 'Knuckles', name: 'Brass Knuckles', kind: 'brawl', base: 'str', mod: 1, type: 'B', conceal: 'P', homebrew: true, quirk: 'uses Brawl', notes: 'Punches for Strength +1 bashing; rolls Dexterity + Brawl.' },
+  { id: 'crowbar', name: 'Crowbar', kind: 'melee', base: 'str', mod: 2, type: 'blunt', conceal: 'T', homebrew: true, quirk: 'lethal to head', notes: 'As club; also opens doors and crates.' },
+  { id: 'chain', name: 'Chain', kind: 'melee', base: 'str', mod: 1, type: 'blunt', conceal: 'J', homebrew: true, quirk: 'sweep / disarm', notes: 'Suited to the Sweep and Disarm maneuvers.' },
+  { id: 'staff', name: 'Staff', kind: 'melee', base: 'str', mod: 1, type: 'blunt', conceal: 'N', homebrew: true, quirk: 'reach · sweep', notes: 'Longer weapon: a fist or knife fighter must close in and loses a die. Suited to Sweep.' },
+  { id: 'spear', name: 'Spear', kind: 'melee', base: 'str', mod: 2, type: 'L', conceal: 'N', stake: true, homebrew: true, quirk: 'reach · stakes', notes: 'Longer weapon (a fist or knife fighter loses a die closing in). A wooden spear through the heart stakes like a stake.' },
+  { id: 'sledgehammer', short: 'Sledge', name: 'Sledgehammer', kind: 'melee', base: 'str', mod: 3, type: 'blunt', conceal: 'N', diffMod: 1, homebrew: true, quirk: 'two-handed · diff +1', notes: 'Heavy and slow: +1 difficulty to hit. Lethal if aimed at the head.' },
+  { id: 'chainsaw', name: 'Chainsaw', kind: 'melee', base: 'fixed', mod: 7, type: 'L', conceal: 'N', diffMod: 1, homebrew: true, quirk: 'loud · diff +1', notes: 'Two-handed and deafening: +1 difficulty. Damage comes from the engine, so Strength and Potence do not add.' },
+
+  { id: 'holdout', short: 'Hold-out .22', name: 'Hold-out Pistol (.22)', kind: 'ranged', base: 'fixed', mod: 3, type: 'gun', range: 10, rate: 3, clip: 6, conceal: 'P', homebrew: true, quirk: 'hides anywhere', notes: 'Tiny and weak; fits in a sock or a sleeve.' },
+  { id: 'deagle', short: 'Desert Eagle', name: 'Pistol, Hvy. (Desert Eagle .50)', kind: 'ranged', base: 'fixed', mod: 6, type: 'gun', range: 30, rate: 2, clip: 8, conceal: 'J', homebrew: true, quirk: 'loud · rate 2', notes: 'Hand cannon: hits like a .44 Magnum, kicks too hard for more than two shots a turn.' },
+  { id: 'sawed_off', short: 'Sawed-off', name: 'Sawed-off Shotgun', kind: 'ranged', base: 'fixed', mod: 8, type: 'gun', range: 10, rate: 2, clip: 2, conceal: 'J', homebrew: true, quirk: 'both barrels', notes: 'Fits under a jacket. Both barrels can go in one turn (multiple shots), but range is only 10 yards.' },
+  { id: 'ak47', short: 'AK-47', name: 'Assault Rifle (AK-47)', kind: 'ranged', base: 'fixed', mod: 7, type: 'gun', range: 100, rate: 3, clip: 31, conceal: 'N', burst: true, homebrew: true, quirk: 'burst / auto', notes: 'Damage from the rulebook\'s automatic-fire example; range and clip are homebrew.' },
+  { id: 'compound_bow', short: 'Bow', name: 'Compound Bow', kind: 'ranged', base: 'fixed', mod: 4, type: 'gun', range: 40, rate: 1, clip: 1, conceal: 'N', stake: true, homebrew: true, quirk: 'silent · stakes', notes: 'Silent. Like the crossbow: bashing vs Kindred unless aimed at the head or heart; a wooden arrow through the heart stakes.' },
+  { id: 'flare_gun', short: 'Flare gun', name: 'Flare Gun', kind: 'ranged', base: 'fixed', mod: 1, type: 'fire', fireLevels: 1, heat: 7, range: 30, rate: 1, clip: 1, conceal: 'J', homebrew: true, quirk: 'fire · 1 shot', notes: 'A burning flare: 1 automatic aggravated level, Fortitude soak at difficulty 7. Reload takes a turn.' },
+  { id: 'taser', name: 'Taser', kind: 'ranged', base: 'fixed', mod: 4, type: 'B', range: 5, rate: 1, clip: 1, conceal: 'P', homebrew: true, quirk: 'stuns mortals', notes: 'Mortals and ghouls who take damage are stunned and lose their next turn. Vampires only take the bashing.' },
+  { id: 'thrown_knife', short: 'Thrown knife', name: 'Throwing Knife', kind: 'thrown', base: 'str', mod: 0, type: 'L', range: 10, conceal: 'P', homebrew: true, quirk: 'Dex + Athletics', notes: 'Thrown with Dexterity + Athletics for Strength lethal; about 10 yards.' },
+  { id: 'molotov', name: 'Molotov Cocktail', kind: 'thrown', base: 'fixed', mod: 2, type: 'fire', fireLevels: 2, heat: 7, range: 10, conceal: 'J', homebrew: true, quirk: 'fire · single use', notes: 'Burning fuel on half the body: 2 automatic aggravated levels per turn while it burns, Fortitude soak at difficulty 7. One use — drop it from the loadout afterwards.' },
+
   // Bestiary natural attacks (fixed dice, lethal)
-  { id: 'wolf_bite', name: 'Bite & Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'dog_bite', name: 'Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'dog_claw', name: 'Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'bear_claw', name: 'Claw', kind: 'brawl', base: 'fixed', mod: 7, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'bear_bite', name: 'Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'cat_claw', name: 'Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'cat_bite', name: 'Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'gator_bite', name: 'Bite', kind: 'brawl', base: 'fixed', mod: 7, type: 'L', natural: true, builtin: true, beast: true },
-  { id: 'gator_tail', name: 'Tail Slap', kind: 'brawl', base: 'fixed', mod: 6, type: 'B', builtin: true, quirk: 'bashing', beast: true },
+  { id: 'wolf_bite', short: 'Bite & Claw', name: 'Wolf Bite & Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'dog_bite', short: 'Bite', name: 'Dog Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'dog_claw', short: 'Claw', name: 'Dog Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'bear_claw', short: 'Claw', name: 'Bear Claw', kind: 'brawl', base: 'fixed', mod: 7, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'bear_bite', short: 'Bite', name: 'Bear Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'cat_claw', short: 'Claw', name: 'Big Cat Claw', kind: 'brawl', base: 'fixed', mod: 4, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'cat_bite', short: 'Bite', name: 'Big Cat Bite', kind: 'brawl', base: 'fixed', mod: 5, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'gator_bite', short: 'Bite', name: 'Alligator Bite', kind: 'brawl', base: 'fixed', mod: 7, type: 'L', natural: true, builtin: true, beast: true },
+  { id: 'gator_tail', short: 'Tail Slap', name: 'Alligator Tail Slap', kind: 'brawl', base: 'fixed', mod: 6, type: 'B', builtin: true, quirk: 'bashing', beast: true },
 ];
+
+/* Catalog categories, in display order. */
+const WEAPON_GROUPS = [
+  { id: 'blade', label: 'Melee — blades' },
+  { id: 'blunt', label: 'Melee — blunt' },
+  { id: 'natural', label: 'Natural & brawl' },
+  { id: 'fire', label: 'Fire' },
+  { id: 'pistol', label: 'Pistols & revolvers', ranged: true },
+  { id: 'shotgun', label: 'Shotguns', ranged: true },
+  { id: 'rifle', label: 'Rifles', ranged: true },
+  { id: 'auto', label: 'Submachine guns & assault rifles', ranged: true },
+  { id: 'bow', label: 'Bows & crossbows', ranged: true },
+  { id: 'special', label: 'Special', ranged: true },
+  { id: 'thrown', label: 'Thrown', ranged: true },
+  { id: 'beast', label: 'Animal attacks' },
+  { id: 'other', label: 'Other' },
+];
+function weaponGroup(w) {
+  const id = w.id;
+  if (w.beast) return 'beast';
+  if (w.kind === 'thrown') return 'thrown';
+  if (w.type === 'fire') return w.kind === 'ranged' ? 'special' : 'fire';
+  if (w.kind === 'brawl') return 'natural';
+  if (w.kind === 'melee') return w.type === 'blunt' || w.type === 'B' ? 'blunt' : 'blade';
+  if (w.kind === 'ranged') {
+    if (w.burst) return 'auto';
+    if (/shotgun|sawed/.test(id)) return 'shotgun';
+    if (/bow/.test(id)) return 'bow';
+    if (/pistol|revolver|holdout|deagle/.test(id)) return 'pistol';
+    if (/rifle/.test(id)) return 'rifle';
+    return w.type === 'gun' ? 'pistol' : 'special';
+  }
+  return 'other';
+}
 
 /* Maneuvers. trait: [attribute, ability]. dmg: 'weapon' | {base:'str', mod} | 'none' | 'special' */
 const MANEUVERS = {
@@ -173,11 +240,57 @@ const STATUSES = [
  * weapons: carried at the start of a fight. favored: other weapons that suit the preset;
  * they head the swap dropdowns on the card, marked with *. */
 const PRESETS = [
+  // Wakeners (campaign antagonists). a: [Str, Dex, Sta, Cha, Man, App, Per, Int, Wit]
+  { id: 'wk_singer', name: 'Thin-Blood Singer', cat: 'Wakeners', kind: 'vampire', gen: '14–15', humanity: '6',
+    a: [2, 2, 2, 2, 2, 2, 2, 2, 3],
+    abil: 'Alertness 2, Athletics 1, Brawl 1, Dodge 2, Empathy 1, Expression 2, Occult 1, Performance 4, Stealth 2, Streetwise 2',
+    disc: 'Obfuscate 1', wp: 6, bp: 8, weapons: [], favored: ['box_cutter'],
+    notes: 'Thin blood: pool 10, only 8 usable, every blood cost doubled (Mend = 2 BP). Virtues: Conscience 3, Self-Control 3, Courage 4. The Chant: singing is their action; a live voice triggers the Dread in every non-thin-blood Kindred in earshot (3+ Singers together = strongest form). Keeps singing while hurt; only Incapacitation, torpor or destruction stops the voice. Gutter-proof: no roll for the Dread. Cannot blood bond; Embrace succeeds 1 in 5. Disciplines: none, or one dot (Obfuscate 1 common). Gear: the choir (just a voice, candle, Chant cassette) · the street (box cutter, Walkman) · the raid (boombox or venue sound system; nothing to defend themselves with, on purpose).' },
+  { id: 'wk_recruiter', name: 'Thin-Blood Recruiter', cat: 'Wakeners', kind: 'vampire', gen: '14–15', humanity: '7',
+    a: [2, 2, 2, 3, 3, 3, 3, 2, 3],
+    abil: 'Alertness 2, Dodge 1, Empathy 3, Expression 2, Leadership 1, Occult 1, Performance 2, Streetwise 3, Subterfuge 3',
+    disc: 'Presence 1', wp: 6, bp: 8, weapons: [], favored: ['revolver_lt'],
+    notes: 'Thin blood: pool 10, only 8 usable, every blood cost doubled. Virtues: Conscience 3, Self-Control 3, Courage 3. The pitch: Charisma + Empathy, diff 6 (5 vs thin-bloods, Caitiff, discarded ghouls) to make a lonely listener feel seen. Not a power. Reports everything: any stranger asking about the preacher reaches a lieutenant within a night. Gutter-proof and thin blood, as the Singer. Presence 1 or none. Gear: the mission (flyers, meal cards, tapes) · just in case (light revolver, never fired) · the list (pager, notebook of names and havens).' },
+  { id: 'wk_faithful', name: 'Caitiff Faithful', cat: 'Wakeners', kind: 'vampire', gen: '13', humanity: '5',
+    a: [3, 2, 3, 2, 2, 1, 2, 2, 2],
+    abil: 'Alertness 2, Athletics 2, Brawl 3, Dodge 2, Drive 1, Firearms 1, Intimidation 2, Melee 2, Performance 1, Stealth 2, Streetwise 3',
+    disc: 'Potence 1, Fortitude 1, Celerity 1', wp: 5, bp: 10, weapons: ['tire_iron', 'knife'], favored: ['revolver_lt', 'pistol_lt', 'stake', 'road_flare', 'crowbar', 'molotov'],
+    notes: 'The Bound majority: muscle, carriers, bodies in the way. Virtues: Conscience 2, Self-Control 3, Courage 4. Blood 1 per turn. Of the line: most are Bound, Stage Four; when the call comes they go north. Used to the Chant: roll for the Dread like any Kindred, but have sat through it a hundred times. Alt Disciplines: Obfuscate 2, Potence 1. Gear: the street (tire iron, knife) · the armed cell (one gun between them: light revolver or light pistol) · the hunter\'s kit (wooden stake, road flare).' },
+  { id: 'wk_lieutenant', name: 'Lieutenant', cat: 'Wakeners', kind: 'vampire', gen: '12', humanity: '5',
+    a: [3, 3, 3, 3, 3, 2, 3, 3, 3],
+    abil: 'Alertness 3, Athletics 2, Brawl 3, Dodge 3, Expression 3, Firearms 2, Intimidation 3, Leadership 3, Melee 3, Occult 2, Performance 4, Stealth 3, Streetwise 4, Subterfuge 3',
+    disc: 'Potence 2, Celerity 1, Obfuscate 2, Presence 1', wp: 7, bp: 11, weapons: ['fire_axe'], favored: ['pistol_hvy'],
+    notes: 'Holds the Chant for a borough; the one the coterie should learn by name. 12th-gen Caitiff. Virtues: Conscience 2, Self-Control 4, Courage 5. Blood 1 per turn. Choirmaster: while with the choir, every Singer ignores wound penalties without spending Willpower. Knows one name above, never the Prophet\'s haven. Recurring: the cell spends itself to get them out of the first two fights; make the third count. Gear: the axe (fire axe) · the cop\'s kit (heavy pistol + Kevlar vest, armor 3: set Armor on the card) · the master (master tape, dubbing deck, keys to dead stations).' },
+  { id: 'wk_choirmaster', name: 'Thin-Blood Choirmaster', cat: 'Wakeners', kind: 'vampire', gen: '14–15', humanity: '5',
+    a: [3, 3, 3, 3, 3, 2, 3, 3, 3],
+    abil: 'Alertness 3, Athletics 2, Brawl 3, Dodge 3, Expression 3, Firearms 2, Intimidation 3, Leadership 3, Melee 3, Occult 2, Performance 4, Stealth 3, Streetwise 4, Subterfuge 3',
+    disc: 'Presence 1, Obfuscate 1', wp: 7, bp: 8, weapons: ['fire_axe'], favored: ['pistol_hvy'],
+    notes: 'The Lieutenant as a thin-blood choirmaster (e.g. Brother Calloway): Presence 1, Obfuscate 1 and nothing else. Thin blood: pool 10, only 8 usable, every blood cost doubled. Choirmaster: while with the choir, every Singer ignores wound penalties without spending Willpower. Knows one name above. Recurring, as the Lieutenant.' },
+  { id: 'wk_fallen', name: 'The Fallen', cat: 'Wakeners', kind: 'vampire', gen: '10–11', humanity: '4',
+    a: [3, 3, 3, 3, 4, 3, 3, 3, 3],
+    abil: 'Alertness 3, Brawl 3, Dodge 3, Etiquette 3, Expression 2, Firearms 2, Intimidation 3, Leadership 2, Melee 3, Occult 2, Politics 2, Streetwise 2, Subterfuge 4',
+    disc: '', wp: 7, bp: 12, weapons: ['straight_razor', 'revolver_hvy'],
+    notes: 'An ancilla of the King\'s clan who fell far enough that nobody noticed. Rare: one in all of Chapter One is plenty. DISCIPLINES: the King\'s clan Disciplines at 3, 2 and 2 plus one other at 1 — set them with Edit once the clan is chosen. Virtues: Conscience 2, Self-Control 3, Courage 4. Blood pool 12–13, 1 per turn. Far gone: Bound at Stage Four and articulate about it; knows the Court\'s etiquette, faces and havens. A clue in a coat for the single-clan pattern. Gear: old habits (straight razor, heavy revolver not cleaned since the seventies) · old keys · the clan\'s tools.' },
+  { id: 'wk_discarded', name: 'Discarded Ghoul', cat: 'Wakeners', kind: 'ghoul', humanity: '6',
+    a: [2, 2, 2, 2, 2, 2, 2, 2, 2],
+    abil: 'Alertness 2, Brawl 2, Dodge 1, Drive 1, Streetwise 2, Subterfuge 2, Crafts 3',
+    disc: 'Potence 1', wp: 3, bp: 2, weapons: ['knife'], favored: ['baseball_bat'],
+    notes: 'Cut off by a domitor, fed and collected by the cult, terrified of both (e.g. Eddie Quinn). Old-job skill at 3: Crafts shown; swap for Etiquette, Finance, etc. with Edit. Vitae 1–2 when fed. Withdrawal: a week without vitae = −1 die to everything. Frenzy difficulties two lower than a vampire\'s. Past their lifespan they age to death within days without vitae. Will trade what they know for a mouthful of vitae. Gear: nothing (kitchen knife) · old keys · scared (baseball bat).' },
+  { id: 'wk_driver', name: 'Driver and Handler', cat: 'Wakeners', kind: 'ghoul', humanity: '4',
+    a: [3, 3, 3, 2, 3, 2, 3, 2, 3],
+    abil: 'Alertness 3, Athletics 2, Brawl 3, Dodge 2, Drive 4, Firearms 2, Melee 2, Security 2, Stealth 2, Streetwise 3, Subterfuge 2, Survival 1',
+    disc: 'Potence 1, Fortitude 1', wp: 5, bp: 2, weapons: ['sap', 'pistol_lt'],
+    notes: 'Serves a Bound Kindred; the daylight work: rented rooms, vans, abductions off the interstate. Daylight: moves the Bound by day in blacked-out box vans, mileage log to the tenth of a mile. Abductions: works from behind (core Ambush rules) with a sap, duct tape and an open van door. Gear: the abduction kit (sap, zip ties, box van) · armed (light pistol) · the Gathering run (cots, blackout film, road atlas with Broken Arrow circled; finding one is a Chapter Three seed).' },
+  { id: 'wk_exmil', name: 'Ex-Military Ghoul', cat: 'Wakeners', kind: 'ghoul', humanity: '5',
+    a: [3, 3, 3, 2, 2, 2, 3, 2, 3],
+    abil: 'Alertness 3, Athletics 2, Brawl 3, Dodge 3, Drive 3, Firearms 4, Intimidation 2, Leadership 1, Medicine 1, Melee 2, Stealth 3, Survival 3',
+    disc: 'Potence 1, Fortitude 1', wp: 6, bp: 2, weapons: ['pistol_lt', 'knife'], favored: ['rifle', 'shotgun', 'road_flare'],
+    notes: 'Chapter Two\'s ambush: trained and short of everything. Leadership 3 for the team leader. Trained: the only Wakeners who fight as a unit — they flank (+1 die), take rear attacks (+2 dice) and set real ambushes. Under-resourced: every good van and able body is committed to the Gathering. Gear: the good rifle (one per team, scoped: tick Scope in the attack dialog) · the roadblock (shotgun, road flare, spike strip, pickup) · what could be spared (light pistol, hunting knife; one Kevlar vest, armor 3, for the whole team).' },
   // Witch-Hunters
   { id: 'inquisitor', name: 'Inquisitor', cat: 'Witch-Hunters', kind: 'mortal',
     a: [2, 3, 3, 4, 3, 2, 3, 3, 3],
     abil: 'Alertness 2, Brawl 2, Dodge 2, Drive 1, Expression 2, Leadership 3, Melee (sword-cane) 3, Occult 3, Stealth 2, Theology 3',
-    wp: 9, humanity: '5–10', weapons: ['sword_cane', 'stake'], favored: ['propane_torch', 'crossbow', 'pistol_lt'],
+    wp: 9, humanity: '5–10', weapons: ['sword_cane', 'stake'], favored: ['propane_torch', 'crossbow', 'pistol_lt', 'flare_gun', 'compound_bow'],
     notes: 'Equipment: rosaries, crucifix, Bible. A few have True Faith 1+ (usually Humanity 9+).' },
   { id: 'gov_agent', name: 'Government Agent', cat: 'Witch-Hunters', kind: 'mortal',
     a: [3, 2, 3, 2, 3, 2, 3, 3, 3],
@@ -192,12 +305,12 @@ const PRESETS = [
   { id: 'enforcer', name: 'Criminal Enforcer', cat: 'Witch-Hunters', kind: 'mortal',
     a: [4, 3, 3, 3, 4, 1, 2, 2, 3],
     abil: 'Alertness 2, Athletics 1, Brawl 3, Dodge 3, Drive 2, Finance 2, Firearms 3, Melee 2, Security 3, Stealth 2, Streetwise 3, Subterfuge 2',
-    wp: 6, humanity: '6 (often lower)', weapons: ['smg_small', 'knife'], favored: ['club', 'pistol_hvy', 'shotgun'], armor: 3,
+    wp: 6, humanity: '6 (often lower)', weapons: ['smg_small', 'knife'], favored: ['club', 'pistol_hvy', 'shotgun', 'sawed_off', 'brass_knuckles'], armor: 3,
     notes: 'Bulletproof vest, midsized car. A tough, savvy member of the underworld.' },
   { id: 'thug', name: 'Street Thug (Extra)', cat: 'Witch-Hunters', kind: 'mortal', health: 'extra',
     a: [3, 2, 2, 2, 2, 2, 2, 2, 2],
     abil: 'Alertness 1, Brawl 2, Dodge 1, Firearms 1, Melee 2, Streetwise 2, Intimidation 2',
-    wp: 3, humanity: '6', weapons: ['knife', 'pistol_lt'], favored: ['club', 'sap', 'revolver_lt'],
+    wp: 3, humanity: '6', weapons: ['knife', 'pistol_lt'], favored: ['club', 'sap', 'revolver_lt', 'brass_knuckles', 'switchblade', 'broken_bottle'],
     notes: 'Derived from the Criminal template ("typical thugs ... much less threatening"). Uses the optional Extras health rule.' },
 
   // Ghouls
@@ -262,7 +375,7 @@ const PRESETS = [
     a: [3, 4, 4, 1, 3, 1, 3, 2, 4],
     abil: 'Alertness 3, Athletics 3, Brawl 4, Dodge 2, Intimidation 4, Melee 4, Streetwise 3, Security 2, Stealth 2',
     disc: 'Celerity 3, Fortitude 2, Obfuscate 3, Potence 2', wp: 5, bp: 10, extra: ['Glamour', 5],
-    weapons: ['axe'], favored: ['knife', 'club'], notes: 'Thrives on carnage. Takes aggravated damage only from fire.' },
+    weapons: ['axe'], favored: ['knife', 'club', 'machete', 'chain'], notes: 'Thrives on carnage. Takes aggravated damage only from fire.' },
   { id: 'sidhe', name: 'Sidhe Enchantress', cat: 'Faeries', kind: 'faerie',
     a: [2, 4, 3, 4, 4, 7, 3, 3, 4],
     abil: 'Alertness 2, Athletics 2, Dodge 2, Empathy 3, Etiquette 4, Expression 4, Intimidation 3, Leadership 4, Occult 4, Performance 4, Subterfuge 2',
@@ -313,5 +426,5 @@ const PRESETS = [
     a: [3, 2, 3, 1, 1, 1, 2, 1, 2],
     abil: 'Alertness 1, Brawl 3, Dodge 1, Melee 2, Intimidation 2',
     disc: 'Potence 1', wp: 3, bp: 10, gen: 14, humanity: '3', health: 'standard',
-    weapons: ['club'], favored: ['knife', 'axe', 'shotgun'], notes: 'Mass-Embraced cannon fodder. Frenzies easily.' },
+    weapons: ['club'], favored: ['knife', 'axe', 'shotgun', 'machete', 'chainsaw', 'molotov'], notes: 'Mass-Embraced cannon fodder. Frenzies easily.' },
 ];

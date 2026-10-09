@@ -127,7 +127,7 @@ const slotOf = def => (def.kind === 'ranged' || def.kind === 'thrown' ? 'ranged'
 function favoredOf(c) {
   const p = c.presetId && getPreset(c.presetId);
   const pc = c.pcId && pcs.find(x => x.id === c.pcId);
-  const ids = [...(p?.weapons || []), ...(p?.favored || []), ...(pc?.weapons || [])].map(w => (typeof w === 'string' ? w : w.wid));
+  const ids = [...(p?.weapons || []), ...(p?.favored || []), ...(pc?.weapons || []), ...(pc?.favored || []), ...(c.favored || [])].map(w => (typeof w === 'string' ? w : w.wid));
   return [...new Set(ids)].filter(id => id !== 'unarmed' && getWeapon(id));
 }
 function weaponOptionsFor(c, slot, currentId, { remove = false } = {}) {
@@ -159,9 +159,10 @@ function attrsFrom(a) {
 }
 
 /* Build a full combatant from a template (preset, PC, custom or link payload). */
+const unknownWeaponIds = new Set(); // collected while building combatants (e.g. from an encounter link)
 function makeCombatant(t, side) {
-  const weapons = (t.weapons || []).map(w => (typeof w === 'string' ? { wid: w } : { ...w }))
-    .filter(w => getWeapon(w.wid));
+  const weapons = (t.weapons || []).map(w => (typeof w === 'string' ? { wid: w } : { wid: w.wid || w.id, ammo: w.ammo }))
+    .filter(w => { if (getWeapon(w.wid)) return true; if (w.wid) unknownWeaponIds.add(w.wid); return false; });
   weapons.forEach(w => { const def = getWeapon(w.wid); if (def.clip && w.ammo == null) w.ammo = def.clip; });
   const extra = Array.isArray(t.extra) ? { label: t.extra[0], max: num(t.extra[1]), cur: num(t.extra[1]) }
     : t.extra ? { label: t.extra.label, max: num(t.extra.max), cur: num(t.extra.cur ?? t.extra.max) } : null;
@@ -190,6 +191,8 @@ function makeCombatant(t, side) {
     boost: { str: 0, dex: 0, sta: 0 },
     weapons,
     regen: !!t.regen,
+    // A preset's favourites come from the preset itself; anyone else keeps their starting loadout plus any listed favourites.
+    favored: t.presetId ? [] : [...new Set([...(t.favored || []), ...weapons.map(w => w.wid)])].filter(id => getWeapon(id)),
     humanity: t.humanity ?? '',
     notes: t.notes || '',
     acted: false,
@@ -217,6 +220,7 @@ function toTemplate(c, withState = false) {
   if (c.armor) t.armor = c.armor;
   if (c.health !== 'standard') t.health = c.health;
   if (c.regen) t.regen = true;
+  if (c.favored?.length) t.favored = [...c.favored];
   if (c.humanity) t.humanity = c.humanity;
   if (c.notes) t.notes = c.notes;
   if (withState) addState(t, c);
@@ -224,6 +228,10 @@ function toTemplate(c, withState = false) {
 }
 function addState(t, c) {
   if (c.dmg.a || c.dmg.l || c.dmg.b) t.dmg = { ...c.dmg };
+  if (c.weapons.some(w => getWeapon(w.wid)?.clip && w.ammo !== getWeapon(w.wid).clip)) {
+    t.weapons = c.weapons.map(w => (getWeapon(w.wid)?.clip ? { wid: w.wid, ammo: w.ammo } : w.wid));
+  }
+  if (c.extra && c.extra.cur !== c.extra.max) t.extra = { label: c.extra.label, max: c.extra.max, cur: c.extra.cur };
   if (c.wp.cur !== c.wp.max) t.wp = { max: c.wp.max, cur: c.wp.cur };
   if (c.bp.cur !== c.bp.max) t.bp = { max: c.bp.max, cur: c.bp.cur };
   if (c.state !== 'active') t.state = c.state;
@@ -358,6 +366,7 @@ function uniqueName(base) {
 }
 function addCombatant(c) {
   c.name = uniqueName(c.name);
+  if (settings.autoCollapse) c.collapsed = true; // newcomers join collapsed; only the active character is open
   combat.combatants.push(c);
   // NPCs joining after NPC initiative was rolled get rolled right away; players enter their own.
   const npcRolled = combat.phase !== 'setup' || combat.combatants.some(x => x !== c && x.side === 'npc' && x.init);
@@ -570,6 +579,14 @@ function dotsHTML(cur, max, cls, act, id) {
   return `<span class="dots">${h}</span>`;
 }
 
+/* "NPC · Vampire", plus the preset's name when the combatant has been renamed: "NPC · Vampire · Thin-Blood Singer". */
+function descriptor(c) {
+  const parts = [c.side === 'pc' ? 'PC' : 'NPC', KINDS[c.kind].label];
+  const p = c.presetId && getPreset(c.presetId);
+  if (p && c.name.replace(/ \d+$/, '') !== p.name) parts.push(p.name);
+  return parts.join(' · ');
+}
+
 function cardHTML(c, ctx) {
   const wi = woundInfo(c);
   const lv = healthOf(c);
@@ -671,7 +688,7 @@ function cardHTML(c, ctx) {
     return `<article class="${classes} collapsed" data-id="${c.id}" data-act="collapse" title="Click to show the full card">
       <div class="c-init">${initBox}</div>
       <div class="c-left"><div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${c.side === 'pc' ? 'PC' : 'NPC'} · ${kind.label}</span></div></div>
+        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span></div></div>
       <div class="c-right"><div class="c-actions">
         ${delayBtn}
         <button class="btn sm" data-act="edit" data-id="${c.id}" title="Edit stats & weapon loadout">✎</button>
@@ -695,7 +712,7 @@ function cardHTML(c, ctx) {
 
     <div class="c-left">
       <div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${c.side === 'pc' ? 'PC' : 'NPC'} · ${kind.label}</span>
+        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>
         ${stateBadge}${extraBadge}${celBadge}${c.acted ? '<span class="badge">acted</span>' : ''}${chips}
       </div>
       <div class="c-healthrow">
@@ -1021,7 +1038,7 @@ function weaponOptions() {
   const groups = [['Natural / Brawl', w => w.kind === 'brawl' && !w.beast], ['Melee', w => w.kind === 'melee'], ['Ranged', w => w.kind === 'ranged' || w.kind === 'thrown'], ['Animal attacks', w => w.beast]];
   return groups.map(([label, fn]) => {
     const list = allWeapons().filter(w => w.id !== 'unarmed' && fn(w));
-    return list.length ? `<optgroup label="${label}">${list.map(w => `<option value="${w.id}">${esc(w.name)} (${weaponDamageText(w)} ${w.type})${w.builtin ? '' : ' ★'}</option>`).join('')}</optgroup>` : '';
+    return list.length ? `<optgroup label="${label}">${list.map(w => `<option value="${w.id}">${esc(w.name)} (${weaponDamageText(w)} ${w.type})${w.builtin || w.homebrew ? '' : ' ★'}</option>`).join('')}</optgroup>` : '';
   }).join('');
 }
 
@@ -1094,20 +1111,27 @@ function openWeapons() {
   const m = openModal(`
     <div class="modal-head"><h2>Weapon catalog</h2><button class="btn ghost right" data-x>✕</button></div>
     <div class="modal-body">
-      <p class="small muted" style="margin-top:0">Built-in weapons come from the Melee and Ranged Weapons Charts. ★ = your custom weapons (saved in localStorage). Add any weapon to any combatant via its <b>Edit → Weapon loadout</b>.</p>
+      <p class="small muted" style="margin-top:0">Built-in weapons come from the Melee and Ranged Weapons Charts; <span class="badge">homebrew</span> ones are additions in the same scale. ★ = your custom weapons (saved in localStorage). Add any weapon to any combatant via its <b>Edit → Weapon loadout</b>.</p>
       <div id="wList"></div>
     </div>
     <div class="modal-foot"><button class="btn primary" id="wNew" style="margin-right:auto">New weapon</button><button class="btn" data-x>Close</button></div>`, { wide: true });
   const list = () => {
-    $('#wList', m).innerHTML = `<table class="rules" style="width:100%"><tbody>
-      <tr><th>Weapon</th><th>Kind</th><th>Damage</th><th>Type</th><th>Range</th><th>Rate</th><th>Clip</th><th>Conceal</th><th></th></tr>
-      ${allWeapons().filter(w => w.id !== 'unarmed').map(w => `<tr>
-        <td>${esc(w.name)}${w.builtin ? '' : ' ★'}${w.quirk ? ` <span class="wq">${esc(w.quirk)}</span>` : ''}${w.notes ? `<div class="faint small">${esc(w.notes)}</div>` : ''}</td>
-        <td>${w.kind}</td><td>${weaponDamageText(w)}</td><td title="${esc(TYPE_HELP[w.type] || '')}">${typeTag(w.type)}</td>
-        <td>${w.range || '—'}</td><td>${w.rate || '—'}${w.burst ? ' (auto)' : ''}</td><td>${w.clip || '—'}</td><td>${w.conceal || '—'}</td>
-        <td>${w.builtin ? '' : `<button class="btn xs" data-ed="${w.id}">Edit</button> <button class="btn xs danger" data-del="${w.id}">✕</button>`}</td></tr>`).join('')}
-      </tbody></table>
-      <p class="small faint">Type: B bashing · L lethal · A aggravated · L* firearm (lethal vs mortals, bashing vs Kindred unless the head is targeted) · B* blunt (lethal if aimed at the head).</p>`;
+    const isCustom = w => !w.builtin && !w.homebrew;
+    const row = (w, ranged) => `<tr>
+        <td><span class="wname">${esc(w.name)}</span>${isCustom(w) ? ' ★' : ''}${w.homebrew ? ' <span class="badge" title="Not in the core rulebook">homebrew</span>' : ''}${w.source ? ` <span class="badge" title="From the ${esc(w.source)} material">${esc(w.source)}</span>` : ''}${w.quirk ? ` <span class="wq">${esc(w.quirk)}</span>` : ''}${w.notes ? `<div class="faint small">${esc(w.notes)}</div>` : ''}</td>
+        <td class="num">${weaponDamageText(w)}</td><td title="${esc(TYPE_HELP[w.type] || '')}">${typeTag(w.type)}</td>
+        ${ranged ? `<td class="num">${w.range || '—'}</td><td class="num">${w.rate || '—'}${w.burst ? ' <span class="faint">auto</span>' : ''}</td><td class="num">${w.clip || '—'}</td>` : ''}
+        <td class="num">${w.conceal || '—'}</td>
+        <td class="act">${isCustom(w) ? `<button class="btn xs" data-ed="${w.id}">Edit</button> <button class="btn xs danger" data-del="${w.id}">✕</button>` : ''}</td></tr>`;
+    $('#wList', m).innerHTML = WEAPON_GROUPS.map(g => {
+      // Core chart weapons first, then homebrew, then your own; each by damage.
+      const items = allWeapons().filter(w => w.id !== 'unarmed' && weaponGroup(w) === g.id)
+        .sort((a, b) => (a.homebrew ? 1 : 0) + (isCustom(a) ? 2 : 0) - (b.homebrew ? 1 : 0) - (isCustom(b) ? 2 : 0) || (a.mod || 0) - (b.mod || 0));
+      if (!items.length) return '';
+      return `<section class="wcat"><h3>${esc(g.label)} <span class="faint">${items.length}</span></h3>
+        <table class="rules"><thead><tr><th>Weapon</th><th class="num">Damage</th><th>Type</th>${g.ranged ? '<th class="num">Range</th><th class="num">Rate</th><th class="num">Clip</th>' : ''}<th class="num">Conceal</th><th class="act"></th></tr></thead>
+        <tbody>${items.map(w => row(w, g.ranged)).join('')}</tbody></table></section>`;
+    }).join('') + `<p class="small faint">Type: B bashing · L lethal · A aggravated · L* firearm (lethal vs mortals, bashing vs Kindred unless the head is targeted) · B* blunt (lethal if aimed at the head). Conceal: P pocket · J jacket · T trenchcoat · N not concealable. Range in yards (2 yards = 1 square); long range is double.</p>`;
   };
   list();
   m.addEventListener('click', e => {
@@ -1610,6 +1634,11 @@ function buildPayload({ includePCs = true, includeState = false } = {}) {
     if (c.pcId || (c.side === 'pc' && pcs.find(p => p.name === c.name))) {
       if (!includePCs) return;
       const e = { pc: c.name };
+      // Loadout changed during the fight? Carry it, so the link doesn't revert to the saved player.
+      const saved = pcs.find(p => p.id === c.pcId || p.name === c.name);
+      const base = saved ? pcToCombatant(saved) : null;
+      if (!base || c.weapons.map(w => w.wid).join() !== base.weapons.map(w => w.wid).join()) e.weapons = c.weapons.map(w => w.wid);
+      if (!base || c.armor !== base.armor) e.armor = c.armor;
       if (includeState) addState(e, c);
       return entries.push(e);
     }
@@ -1631,6 +1660,7 @@ function buildPayload({ includePCs = true, includeState = false } = {}) {
       if (c.health !== base.health) e.health = c.health;
       const wids = c.weapons.map(w => w.wid);
       if (wids.join() !== base.weapons.map(w => w.wid).join()) e.weapons = wids;
+      if (c.favored?.length) e.favored = [...c.favored];
       if (c.notes !== base.notes) e.notes = c.notes;
       if (includeState) addState(e, c);
       if (e.attrs) e.attrs = ATTR_KEYS.map(k => e.attrs[k]);
@@ -1661,6 +1691,7 @@ function payloadToUrl(payload) {
 
 function loadPayload(payload) {
   if (!payload || typeof payload !== 'object') throw new Error('Payload must be an object');
+  unknownWeaponIds.clear();
   (payload.weapons || []).forEach(w => {
     if (w?.id && !getWeapon(w.id)) { customWeapons.push({ ...w, builtin: undefined }); }
   });
@@ -1685,7 +1716,11 @@ function loadPayload(payload) {
         let c = null;
         if (e.pc) {
           const p = pcs.find(x => x.name.toLowerCase() === String(e.pc).toLowerCase());
-          if (p) c = pcToCombatant(p);
+          if (p) {
+            c = pcToCombatant(p);
+            if (e.weapons) c.weapons = makeCombatant({ weapons: e.weapons }).weapons;
+            if (e.armor !== undefined) c.armor = clamp(num(e.armor), 0, 5);
+          }
           else if (e.attrs || e.custom) c = makeCombatant({ ...(e.custom || e), name: e.pc, side: 'pc' }, 'pc');
           else { if (i === 0) missing.push(e.pc); continue; }
         } else if (e.preset) {
@@ -1693,11 +1728,14 @@ function loadPayload(payload) {
           if (!p) { if (i === 0) missing.push(e.preset); continue; }
           const t = presetTemplate(p);
           ['name', 'side', 'kind', 'abil', 'disc', 'armor', 'health', 'weapons', 'notes', 'regen', 'extra', 'gen', 'humanity'].forEach(f => { if (e[f] !== undefined) t[f] = e[f]; });
-          if (e.attrs) t.attrs = e.attrs;
+          const extraFav = (e.favored || []).filter(id => getWeapon(id));
+          // A full array replaces the attributes; an object like {"dex": 4} only changes those named.
+          if (e.attrs) t.attrs = Array.isArray(e.attrs) ? e.attrs : { ...attrsFrom(p.a || p.attrs), ...e.attrs };
           if (e.wp !== undefined) t.wp = e.wp;
           if (e.bp !== undefined) t.bp = e.bp;
           delete t.a;
           c = makeCombatant(t);
+          if (extraFav.length) c.favored = extraFav;
         } else if (e.custom || e.name) {
           c = makeCombatant(e.custom || e);
         }
@@ -1712,8 +1750,10 @@ function loadPayload(payload) {
   }
   logEntries = [];
   log(`<b>Encounter loaded</b>${c2.name ? ': ' + esc(c2.name) : ''} (${c2.combatants.length} combatants)`);
-  if (missing.length) toast(`Not found: ${missing.join(', ')}`, 5000);
+  if (unknownWeaponIds.size) missing.push(...[...unknownWeaponIds].map(id => `weapon "${id}"`));
+  if (missing.length) toast(`Not found: ${missing.join(', ')}`, 6000);
   commit();
+  return missing;
 }
 
 function openShare() {
@@ -1792,7 +1832,11 @@ async function checkUrlPayload() {
   try { history.replaceState(null, '', location.pathname + location.search.replace(/[?&]encounter=[^&]*/, '')); } catch { location.hash = ''; }
   const label = payload.name ? `"${payload.name}"` : 'this encounter';
   if (combat.combatants.length && !(await ask(`Start ${label} from the link? This replaces the current combat.`, { ok: 'Start encounter' }))) return;
-  try { loadPayload(payload); toast(`Loaded ${label}`); } catch (err) { toast('Could not load encounter: ' + err.message, 5000); }
+  try {
+    const missing = loadPayload(payload);
+    // Keep the "not found" warning visible rather than replacing it with "Loaded".
+    toast(missing.length ? `Loaded ${label} — not found: ${missing.join(', ')}` : `Loaded ${label}`, missing.length ? 7000 : 2600);
+  } catch (err) { toast('Could not load encounter: ' + err.message, 5000); }
 }
 
 /* ---------- Settings ---------- */

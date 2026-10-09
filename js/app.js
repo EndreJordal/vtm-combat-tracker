@@ -317,7 +317,7 @@ function resultHTML(r, autoSucc = 0) {
 /* ============================================================
  * State
  * ============================================================ */
-const settings = Object.assign({ autoSoak: false, addQty: 1, keepInit: false, skipDeclare: false }, load(STORE.settings, {}));
+const settings = Object.assign({ autoSoak: false, addQty: 1, keepInit: false, skipDeclare: false, autoCollapse: false }, load(STORE.settings, {}));
 let pcs = load(STORE.pcs, []);
 let combat = load(STORE.combat, null) || newCombat();
 let logEntries = combat.log || [];
@@ -329,7 +329,19 @@ function persist() {
   combat.log = logEntries.slice(0, 200);
   save(STORE.combat, combat);
 }
-function commit() { persist(); render(); }
+function commit() { syncAutoCollapse(); persist(); render(); }
+/* "Keep inactive collapsed": whenever the active character changes, collapse everyone else and
+ * open the active one. Cards opened by hand stay open until the next change of active character. */
+function syncAutoCollapse(force = false) {
+  if (!settings.autoCollapse) return;
+  const actorId = currentActor()?.id ?? null;
+  if (!force && combat.autoCollapseFor === actorId) return;
+  combat.autoCollapseFor = actorId;
+  combat.combatants.forEach(c => {
+    c.collapsed = c.id !== actorId;
+    if (c.collapsed) c.expanded = false;
+  });
+}
 function log(html) {
   logEntries.unshift({ t: `T${combat.round}`, html });
   if (logEntries.length > 200) logEntries.length = 200;
@@ -501,9 +513,6 @@ function render() {
 
 function renderTurnInfo() {
   const labels = { setup: 'Initiative', declare: 'Declaration', act: 'Actions', extra: 'Extra actions', end: 'Turn over' };
-  $('#turnInfo').innerHTML = `<span class="pill">Turn <b>${combat.round}</b></span><span class="pill">${labels[combat.phase]}</span>
-    <label class="check small" title="House rule: roll initiative once per combat. Each character keeps their die roll; wound penalties still lower the score."><input type="checkbox" id="setKeepInit" ${settings.keepInit ? 'checked' : ''}> Keep initiative</label>
-    <label class="check small" title="House rule: no declaration step. Everyone decides what to do on their own turn. Suggested: defending before your turn uses your action; split pools are decided at your first roll."><input type="checkbox" id="setSkipDeclare" ${settings.skipDeclare ? 'checked' : ''}> Skip declarations</label>`;
   const btnNext = $('#btnNext');
   btnNext.textContent = combat.phase === 'setup' ? 'Start ▶' : combat.phase === 'end' ? 'New turn ▶' : 'Next ▶';
   $('#btnPrev').disabled = combat.phase === 'setup';
@@ -511,21 +520,29 @@ function renderTurnInfo() {
   btnNext.disabled = combat.phase === 'setup' && (!combat.combatants.length || pending.length > 0);
   btnNext.title = btnNext.disabled && pending.length ? `Waiting for initiative: ${pending.map(c => c.name).join(', ')}` : '';
   const pendingNpc = pending.filter(c => c.side === 'npc').length;
-  const pendingPcs = pending.filter(c => c.side === 'pc').map(c => `<b>${esc(c.name)}</b>`);
+  const pendingPcs = pending.filter(c => c.side === 'pc').map(c => c.name);
 
+  // One-line status in the top bar (short text), with the full explanation as its tooltip.
   const cur = currentActor();
-  const banner = {
-    setup: !combat.combatants.length ? '' : pending.length
-      ? `<b>Initiative</b> (1d10 + Dexterity + Wits − wounds). ${pendingPcs.length ? `Type each player's total on their card — waiting for ${pendingPcs.join(', ')}. ` : ''}${pendingNpc ? `${pendingNpc} NPC${pendingNpc > 1 ? 's' : ''} not rolled — press <b>Roll NPC initiative</b>.` : ''}`
-      : 'All initiative is in. Press <b>Start ▶</b>.',
-    declare: cur ? `<b>Stage One — Declaration.</b> Players declare, slowest first (NPC actions stay hidden). <b>${esc(cur.name)}</b> declares (multiple actions, Disciplines, Willpower).` : '',
-    act: cur ? `<b>Stage Two — Attack.</b> <b>${esc(cur.name)}</b> acts (initiative ${cur.init.total}). Defensive actions may interrupt; delayed characters may act at any time.` : '',
-    extra: cur ? `<b>End of turn — multiple actions.</b> <b>${esc(cur.name)}</b> takes ${cur.extraActions} extra action${cur.extraActions > 1 ? 's' : ''} (Celerity), in order of initiative rating.` : '',
-    end: settings.keepInit
-      ? 'Turn complete. Press <b>New turn ▶</b>: initiative carries over, adjusted for new wounds (werewolves regenerate, Celerity from last turn kicks in).'
-      : 'Turn complete. Press <b>New turn ▶</b>: NPCs re-roll initiative, players enter new totals (werewolves regenerate, Celerity from last turn kicks in).',
+  const status = {
+    setup: !combat.combatants.length ? ['', ''] : pending.length
+      ? [`Waiting: ${[...pendingPcs.map(n => `<b>${esc(n)}</b>`), pendingNpc ? `${pendingNpc} NPC${pendingNpc > 1 ? 's' : ''} (Roll NPC initiative)` : ''].filter(Boolean).join(', ')}`,
+         `Initiative = 1d10 + Dexterity + Wits − wounds. Type each player's total on their card${pendingNpc ? '; press Roll NPC initiative for the NPCs' : ''}.`]
+      : ['All initiative in — press <b>Start ▶</b>', ''],
+    declare: cur ? [`▶ <b>${esc(cur.name)}</b> declares`, 'Stage One: players declare, slowest first (NPC actions stay hidden) — multiple actions, Disciplines, Willpower.'] : ['', ''],
+    act: cur ? [`▶ <b>${esc(cur.name)}</b> acts <span class="faint">(${cur.init.total})</span>`, 'Stage Two: act in initiative order. Defensive actions may interrupt; delayed characters may act at any time.'] : ['', ''],
+    extra: cur ? [`▶ <b>${esc(cur.name)}</b>: ${cur.extraActions} extra action${cur.extraActions > 1 ? 's' : ''}`, 'End of turn: multiple actions (Celerity) in order of initiative rating.'] : ['', ''],
+    end: ['Turn over — <b>New turn ▶</b>', settings.keepInit
+      ? 'Initiative carries over, adjusted for new wounds. Werewolves regenerate; Celerity from last turn kicks in.'
+      : 'NPCs re-roll initiative, players enter new totals. Werewolves regenerate; Celerity from last turn kicks in.'],
   }[combat.phase];
-  $('#phaseBanner').innerHTML = banner || '';
+
+  const activeRules = SETTING_DEFS.filter(d => d.houseRule && settings[d.key]).map(d => d.label);
+  const btnSettings = $('#btnSettings');
+  btnSettings.classList.toggle('has-rules', activeRules.length > 0);
+  btnSettings.title = 'Settings' + (activeRules.length ? ` — house rules on: ${activeRules.join(', ')}` : '');
+  $('#turnInfo').innerHTML = `<span class="pill">Turn <b>${combat.round}</b> · ${labels[combat.phase]}</span>
+    <span class="status" title="${esc(status[1])}">${status[0]}</span>`;
 }
 
 function renderList() {
@@ -648,6 +665,23 @@ function cardHTML(c, ctx) {
       ${isOut(c) ? `<div class="row" style="margin-top:6px"><button class="btn xs" data-act="revive" data-id="${c.id}">Set state: active</button></div>` : `<div class="row" style="margin-top:6px"><button class="btn xs" data-act="setstate" data-v="torpor" data-id="${c.id}">Send to torpor</button><button class="btn xs" data-act="setstate" data-v="dead" data-id="${c.id}">Mark dead</button></div>`}
     </div>` : '';
 
+  const collapseBtn = `<button class="btn sm" data-act="collapse" data-id="${c.id}" title="${c.collapsed ? 'Show the full card' : 'Collapse to a single line'}">${c.collapsed ? '+' : '−'}</button>`;
+  if (c.collapsed) {
+    // Clicking anywhere on a collapsed card (except its buttons and initiative box) opens it again.
+    return `<article class="${classes} collapsed" data-id="${c.id}" data-act="collapse" title="Click to show the full card">
+      <div class="c-init">${initBox}</div>
+      <div class="c-left"><div class="c-name"><span class="cname">${esc(c.name)}</span>
+        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${c.side === 'pc' ? 'PC' : 'NPC'} · ${kind.label}</span></div></div>
+      <div class="c-right"><div class="c-actions">
+        ${delayBtn}
+        <button class="btn sm" data-act="edit" data-id="${c.id}" title="Edit stats & weapon loadout">✎</button>
+        <button class="btn sm" data-act="dup" data-id="${c.id}" title="Duplicate">⧉</button>
+        ${collapseBtn}
+        <button class="btn sm danger" data-act="remove" data-id="${c.id}" title="Remove from combat">✕</button>
+      </div></div>
+    </article>`;
+  }
+
   const resRow = (label, r, key, cls, title = '', extra = '') => `<div class="res" title="${esc(title)}"><span class="rl">${esc(label)}</span>
       <button class="btn xs" data-act="res" data-r="${key}" data-d="-1" data-id="${c.id}" title="Spend 1">−</button>
       ${dotsHTML(r.cur, r.max, cls, 'res-set-' + key, c.id)}
@@ -696,6 +730,7 @@ function cardHTML(c, ctx) {
         <button class="btn sm" data-act="edit" data-id="${c.id}" title="Edit stats & weapon loadout">✎</button>
         <button class="btn sm" data-act="dup" data-id="${c.id}" title="Duplicate">⧉</button>
         <button class="btn sm" data-act="expand" data-id="${c.id}" title="Details, statuses, blood boosts">${c.expanded ? '▴' : '▾'}</button>
+        ${collapseBtn}
         <button class="btn sm danger" data-act="remove" data-id="${c.id}" title="Remove from combat">✕</button>
       </div>
       <div class="statblock">
@@ -801,9 +836,7 @@ function renderDiceTab() {
         <button class="btn primary right" data-act="rollwho">Roll</button></div>
       <div id="dOut2" style="margin-top:8px"></div>
     </div>
-    <div class="fieldset"><div class="legend">Settings</div>
-      <label class="check" title="Quick +B/+L/+A buttons roll a soak first (with undead bashing halving)"><input type="checkbox" id="setAutoSoak" ${settings.autoSoak ? 'checked' : ''}> Quick damage buttons roll soak</label>
-    </div>`;
+`;
   refreshDiceCombatants();
 }
 function refreshDiceCombatants() {
@@ -820,9 +853,9 @@ function renderLog() {
 /* ============================================================
  * Modals
  * ============================================================ */
-function openModal(html, { wide = false, onClose } = {}) {
+function openModal(html, { wide = false, cls = '', onClose } = {}) {
   const root = $('#modalRoot');
-  root.innerHTML = `<div class="modal-backdrop"><div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true">${html}</div></div>`;
+  root.innerHTML = `<div class="modal-backdrop ${cls}"><div class="modal ${wide ? 'wide' : ''} ${cls}" role="dialog" aria-modal="true">${html}</div></div>`;
   root._onClose = onClose;
   const bd = $('.modal-backdrop', root);
   bd.addEventListener('mousedown', e => { if (e.target === bd) closeModal(); });
@@ -1175,7 +1208,7 @@ function openAttack(attackerId, weaponIdx) {
     dmgRoll: null, dmgSucc: null, soakRoll: null, soakSucc: null, applied: false, spent: false, showAll: false,
   };
   pickDefaultManeuver();
-  openModal('<div id="atkBody"></div>', { wide: true, onClose: () => { atk = null; } });
+  openModal('<div id="atkBody"></div>', { cls: 'attack', onClose: () => { atk = null; } });
   renderAttack();
 }
 function atkWeapon(a) {
@@ -1266,8 +1299,10 @@ function atkCalc() {
   const soak = t ? soakFor(t, effType, { fire: rawType === 'fire', heat: w.heat, natural, silver: w.silver }) : { pool: 0, parts: [], diff: 6 };
   const dmgTotal = autoFire ? (hit ? base : null) : (atk.dmgSucc == null ? null : atk.dmgSucc + potence);
   let final = null, halved = false;
-  if (dmgTotal != null && atk.soakSucc != null) {
-    final = Math.max(0, dmgTotal - atk.soakSucc);
+  // No soak dice (e.g. a mortal against lethal) means nothing to roll: zero soak successes.
+  const soakSucc = atk.soakSucc ?? (soak.pool < 1 ? 0 : null);
+  if (dmgTotal != null && soakSucc != null) {
+    final = Math.max(0, dmgTotal - soakSucc);
     if (t && KINDS[t.kind].halveBashing && effType === 'B') { final = Math.floor(final / 2); halved = true; }
   }
   // Defense pool for the target (dodge / block / parry)
@@ -1283,7 +1318,7 @@ function atkCalc() {
     if (t.st.blinded) { def.diff += 2; def.parts.push('blinded: diff +2'); }
     def.diff = clamp(def.diff, 2, 10);
   }
-  return { a, t, w, inst, man, def, pool, parts, diff, dparts, tg, dmgPool, dparts2, potence, rawType, effType, soak, net, hit, atkTotal, autoFire, dmgTotal, final, halved, natural, noDamage: mdmg === 'none' };
+  return { a, t, w, inst, man, def, soakSucc, pool, parts, diff, dparts, tg, dmgPool, dparts2, potence, rawType, effType, soak, net, hit, atkTotal, autoFire, dmgTotal, final, halved, natural, noDamage: mdmg === 'none' };
 }
 
 function renderAttack() {
@@ -1314,22 +1349,34 @@ function renderAttack() {
   const targetChips = shown.map(x => {
     const xw = woundInfo(x);
     const st = x.state !== 'active' ? x.state : xw.incap ? 'incap.' : xw.total ? xw.label : '';
-    return `<button class="tchip ${x.side} ${x.id === atk.targetId ? 'on' : ''} ${isOut(x) ? 'out' : ''}" data-set="targetId" data-v="${x.id}">
-      <b>${esc(x.name)}</b><small>${KINDS[x.kind].label}${st ? ' · ' + esc(st) : ''}</small></button>`;
+    // Side is only worth showing when allies are listed too.
+    const side = atk.showAll && opposing.length ? `${x.side === 'pc' ? 'PC' : 'NPC'} · ` : '';
+    return `<button class="tchip ${x.id === atk.targetId ? 'on' : ''} ${isOut(x) ? 'out' : ''}" data-set="targetId" data-v="${x.id}">
+      <b>${esc(x.name)}</b><small>${side}${KINDS[x.kind].label}${st ? ` · <span class="hurt">${esc(st)}</span>` : ''}</small></button>`;
   }).join('');
 
   const weaponChips = [{ i: -1, def: getWeapon('unarmed'), inst: null }, ...a.weapons.map((x, i) => ({ i, def: getWeapon(x.wid), inst: x }))]
-    .filter(x => x.def).map(x => `<button class="wchip ${x.i === atk.weaponIdx ? 'on' : ''}" data-set="weaponIdx" data-v="${x.i}" data-num>
-      ${esc(x.def.name)} <span class="dmg">${weaponDamageText(x.def)} ${typeTag(x.def.type)}</span>${x.def.clip ? ` <span class="ammo mono">${x.inst.ammo}/${x.def.clip}</span>` : ''}</button>`).join('');
+    .filter(x => x.def).map(x => {
+      const chipBtn = `<button class="wchip ${x.i === atk.weaponIdx ? 'on' : ''}" data-set="weaponIdx" data-v="${x.i}" data-num>
+        ${esc(x.def.name)} <span class="dmg">${weaponDamageText(x.def)} ${typeTag(x.def.type)}</span>${x.def.clip ? ` <span class="ammo mono ${x.inst.ammo ? '' : 'out'}">${x.inst.ammo}/${x.def.clip}</span>` : ''}</button>`;
+      // Ranged weapons get a reload button joined to the chip's right edge.
+      return x.def.clip
+        ? `<span class="wgroup">${chipBtn}<button class="wreload" data-a="reload" data-w="${x.i}" ${x.inst.ammo >= x.def.clip ? 'disabled' : ''} title="Reload ${esc(x.def.name)}: takes one full turn${x.def.reload ? ` (crossbow: ${x.def.reload} turns)` : ''}">↻</button></span>`
+        : chipBtn;
+    }).join('');
 
   const defLabels = { dodge: 'Dodge', block: 'Block', parry: 'Parry' };
 
   body.innerHTML = `
-    <div class="modal-head"><h2>Attack — ${esc(a.name)}</h2><button class="btn ghost right" data-x>✕</button></div>
+    <div class="modal-head"><h2>Attack — ${esc(a.name)}</h2>
+      <button class="btn sm right" data-a="reset" title="Clear the rolls and start a new attack with the same setup">New attack</button>
+      <button class="btn ghost" data-x title="Close (Esc)">✕</button></div>
     <div class="modal-body atk">
       <div class="step"><h3><span class="n">1</span>Setup</h3>
-        <div class="arow"><span class="al">Weapon</span><div class="chips">${weaponChips}</div></div>
-        <div class="arow"><span class="al">Maneuver</span>${seg('maneuverId', maneuversFor(a, w).map(m => [m.id, m.name, m.note || '']), man.id)}</div>
+        <div class="arow-pair">
+          <div class="arow"><span class="al">Weapon</span><div class="chips">${weaponChips}</div></div>
+          <div class="arow"><span class="al">Maneuver</span>${seg('maneuverId', maneuversFor(a, w).map(m => [m.id, m.name, m.note || '']), man.id)}</div>
+        </div>
         <div class="arow"><span class="al">Target</span><div class="chips">${targetChips || '<span class="muted">No one else in the fight.</span>'}
           ${opposing.length && opposing.length < others.length ? `<button class="btn xs ghost" data-set="showAll" data-v="${atk.showAll ? '' : '1'}">${atk.showAll ? 'Only opponents' : 'Show allies too'}</button>` : ''}</div></div>
         <div class="mods">
@@ -1351,7 +1398,10 @@ function renderAttack() {
 
       <div class="atk-grid">
         <div class="step"><h3><span class="n">2</span>Attack roll</h3>
-          <div class="bigline">Pool <b>${Math.max(0, k.pool)}</b> vs difficulty <b>${k.diff}</b>${inst && w.clip ? ` <span class="muted small">· ammo ${inst.ammo}/${w.clip}${ammoNeed ? `, uses ${ammoNeed}` : ''}</span>` : ''}</div>
+          <div class="bigline">Pool <b>${Math.max(0, k.pool)}</b> vs difficulty <b>${k.diff}</b></div>
+          ${inst && w.clip ? `<div class="ammo-row ${inst.ammo < Math.max(1, ammoNeed) ? 'empty' : ''}">
+            Ammo <b class="mono">${inst.ammo}/${w.clip}</b>${ammoNeed ? ` <span class="muted">· uses ${ammoNeed}</span>` : ''}${inst.ammo < Math.max(1, ammoNeed) ? ' <span class="warn">— not enough, reload</span>' : ''}
+            <button class="btn xs" data-a="reload" ${inst.ammo >= w.clip ? 'disabled' : ''} title="Reload: takes one full turn${w.reload ? ` (crossbow: ${w.reload} turns)` : ''}">↻ Reload</button></div>` : ''}
           <div class="calc">${k.parts.map(esc).join(' · ')}</div>
           <div class="calc">Difficulty: ${k.dparts.map(esc).join(' · ')}</div>
           ${rollOrEnter('rollatk', 'atkSucc', k.pool, atk.atkSucc)}
@@ -1386,22 +1436,19 @@ function renderAttack() {
           ${t && !k.noDamage ? `
             <div class="bigline">${esc(t.name)}: pool <b>${k.soak.pool}</b> vs difficulty <b>${k.soak.diff}</b></div>
             <div class="calc">Soaking ${typeNames[k.effType]}: ${k.soak.parts.map(esc).join(' + ') || 'nothing'}</div>
-            ${rollOrEnter('rollsoak', 'soakSucc', k.soak.pool, atk.soakSucc, { digital: !targetIsPlayer, disabled: k.dmgTotal == null })}
+            ${k.soak.pool < 1 ? '<div class="calc"><b>No soak dice</b> — all damage goes through.</div>' : rollOrEnter('rollsoak', 'soakSucc', k.soak.pool, atk.soakSucc, { digital: !targetIsPlayer, disabled: k.dmgTotal == null })}
             ${atk.soakRoll ? `<div class="dice-out">${diceHTML(atk.soakRoll)} ${resultHTML(atk.soakRoll)}</div>` : ''}
             ${k.final != null ? `<div class="bigline">${esc(t.name)} takes <b>${k.final}</b> ${typeNames[k.effType]}${k.halved ? ' <span class="muted small">(bashing halved: undead)</span>' : ''}</div>
               ${k.final > dazedLimit ? `<div class="note">More than ${KINDS[t.kind].supernatural ? 'Stamina + 2' : 'Stamina'} (${dazedLimit}): <b>dazed</b>, loses next turn.</div>` : ''}
               ${w.stake && atk.targeting === 'precise' && k.final >= 3 && t.kind === 'vampire' ? `<div class="note">Stake through the heart: <b>staked</b> (paralysed).</div>` : ''}
               ${man.id === 'disarm' && k.dmgTotal > eff(t, 'str') ? `<div class="note">Damage successes exceed Strength: no damage, <b>disarmed</b> instead.</div>` : ''}` : ''}
             <div class="roll-row">
-              <button class="btn primary" data-a="apply" ${k.final == null || atk.applied ? 'disabled' : ''}>${atk.applied ? 'Applied ✓' : 'Apply damage'}</button>
-              ${targetIsPlayer ? '' : `<button class="btn" data-a="autoall" ${k.atkTotal == null || !k.hit || atk.applied ? 'disabled' : ''} title="Roll any remaining damage and soak digitally, then apply">Roll rest & apply</button>`}
+              <button class="btn primary" data-a="apply" ${k.final == null ? 'disabled' : ''} title="Apply the damage and close">Apply damage</button>
+              <button class="btn" data-a="applynew" ${k.final == null ? 'disabled' : ''} title="Apply the damage and start another attack with the same setup">Apply & new attack</button>
+              ${targetIsPlayer ? '' : `<button class="btn" data-a="autoall" ${k.atkTotal == null || !k.hit ? 'disabled' : ''} title="Roll any remaining damage and soak digitally, apply, and close">Roll rest & apply</button>`}
             </div>` : '<div class="muted">—</div>'}
         </div>
       </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn" data-a="reset">New attack</button>
-      <button class="btn" data-x>Close</button>
     </div>`;
 }
 
@@ -1429,7 +1476,7 @@ function logAttack(k) {
   log(`<b>${esc(a.name)}</b> attacks ${t ? esc(t.name) : ''} with ${esc(w.name)} (${esc(man.name)}): ${shown} → ${atk.atkRoll?.botch && !atk.wp ? '<b>botch</b>' : total + ' succ'} @${k.diff}`);
 }
 
-function atkAction(act) {
+function atkAction(act, arg = null) {
   const k = atkCalc();
   const { t, w, man } = k;
   if (act === 'rollatk') {
@@ -1459,7 +1506,7 @@ function atkAction(act) {
     const k2 = atkCalc();
     if (atk.soakSucc == null) { atk.soakRoll = roll(k2.soak.pool, k2.soak.diff, { canBotch: false }); atk.soakSucc = atk.soakRoll.succ; }
     return atkAction('apply');
-  } else if (act === 'apply') {
+  } else if (act === 'apply' || act === 'applynew') {
     const k2 = atkCalc();
     if (k2.final == null || !t || atk.applied) return;
     const disarmed = man.id === 'disarm' && k2.dmgTotal > eff(t, 'str');
@@ -1470,8 +1517,20 @@ function atkAction(act) {
     if (w.stake && atk.targeting === 'precise' && k2.final >= 3 && t.kind === 'vampire') t.st.staked = true;
     if (['clinch', 'hold'].includes(man.id)) t.st.clinched = true;
     atk.applied = true;
-    log(`→ ${esc(t.name)} ${disarmed ? 'is <b>disarmed</b>' : `takes <b>${k2.final}</b> ${k2.effType}`} (dmg ${k2.dmgTotal}, soak ${atk.soakSucc}${k2.halved ? ', halved' : ''})${t.st.dazed && k2.final > dazedLimit ? ' — dazed' : ''}${msg ? ' — ' + esc(msg) : ''}`);
-    if (msg) toast(msg);
+    log(`→ ${esc(t.name)} ${disarmed ? 'is <b>disarmed</b>' : `takes <b>${k2.final}</b> ${k2.effType}`} (dmg ${k2.dmgTotal}, soak ${k2.soakSucc}${k2.halved ? ', halved' : ''})${t.st.dazed && k2.final > dazedLimit ? ' — dazed' : ''}${msg ? ' — ' + esc(msg) : ''}`);
+    // The dialog closes (or resets), so confirm what happened in a toast.
+    const names = { B: 'bashing', L: 'lethal', A: 'aggravated' };
+    toast(msg || (disarmed ? `${t.name} is disarmed` : `${t.name} takes ${k2.final} ${names[k2.effType]}${t.st.dazed && k2.final > dazedLimit ? ' — dazed' : ''}`));
+    commit();
+    if (act === 'apply') { closeModal(); return; }
+    Object.assign(atk, { atkRoll: null, atkSucc: null, defRoll: null, defSucc: 0, dmgRoll: null, dmgSucc: null, soakRoll: null, soakSucc: null, applied: false, wp: false, spent: false });
+  } else if (act === 'reload') {
+    // Reload the weapon named on the button, or the selected one.
+    const inst = arg != null ? k.a.weapons[arg] : k.inst;
+    const def = inst && getWeapon(inst.wid);
+    if (!def?.clip) return;
+    inst.ammo = def.clip;
+    log(`${esc(k.a.name)} reloads ${esc(def.name)}.`);
     commit();
   } else if (act === 'reset') {
     Object.assign(atk, { atkRoll: null, atkSucc: null, defRoll: null, defSucc: 0, dmgRoll: null, dmgSucc: null, soakRoll: null, soakSucc: null, applied: false, wp: false, spent: false });
@@ -1520,7 +1579,7 @@ $('#modalRoot').addEventListener('click', e => {
     return setAtk(s.dataset.set, v);
   }
   const b = e.target.closest('[data-a]');
-  if (b && !b.disabled) atkAction(b.dataset.a);
+  if (b && !b.disabled) atkAction(b.dataset.a, b.dataset.w != null ? num(b.dataset.w) : null);
 });
 $('#modalRoot').addEventListener('change', e => {
   if (!atk || !$('#atkBody')) return;
@@ -1736,6 +1795,51 @@ async function checkUrlPayload() {
   try { loadPayload(payload); toast(`Loaded ${label}`); } catch (err) { toast('Could not load encounter: ' + err.message, 5000); }
 }
 
+/* ---------- Settings ---------- */
+/* Every toggle lives here; add new ones to this list. onChange runs after the value is saved. */
+const SETTING_DEFS = [
+  { key: 'keepInit', group: 'House rules', houseRule: true, label: 'Keep initiative',
+    desc: 'Roll initiative once per combat. Each character keeps their die roll; wound penalties and knockdown still adjust the score each turn.',
+    onChange: on => toast(on ? 'Initiative now carries over between turns (house rule).' : 'Initiative is re-rolled every turn (rules as written).') },
+  { key: 'skipDeclare', group: 'House rules', houseRule: true, label: 'Skip declarations',
+    desc: 'No declaration step: everyone decides on their own turn. Suggested with it: defending before your turn uses your action, and pool splits are decided at your first roll.',
+    onChange: on => {
+      if (on && combat.phase === 'declare') advancePhase(); // jump straight to actions
+      toast(on ? 'Declaration step skipped (house rule).' : 'Declaration step restored (rules as written).');
+    } },
+  { key: 'autoCollapse', group: 'Tracker', label: 'Keep inactive collapsed',
+    desc: 'Everyone except the active character is collapsed to a single line, and the active character is shown in full. You can still open other cards; they collapse again as soon as the next character becomes active.',
+    onChange: on => { if (on) syncAutoCollapse(true); } },
+  { key: 'autoSoak', group: 'Tracker', label: 'Quick damage buttons roll soak',
+    desc: "The +B / +L / +A buttons on the cards roll the target's soak first (undead halve bashing) instead of applying the level directly." },
+];
+function openSettings() {
+  const groups = [...new Set(SETTING_DEFS.map(d => d.group))];
+  const m = openModal(`
+    <div class="modal-head"><h2>Settings</h2><button class="btn ghost right" data-x>✕</button></div>
+    <div class="modal-body settings">
+      ${groups.map(g => `<div class="fieldset"><div class="legend">${esc(g)}</div>
+        ${SETTING_DEFS.filter(d => d.group === g).map(d => `
+          <label class="setting">
+            <input type="checkbox" data-setting="${d.key}" ${settings[d.key] ? 'checked' : ''}>
+            <span class="sw" aria-hidden="true"></span>
+            <span class="txt"><b>${esc(d.label)}</b><small>${esc(d.desc)}</small></span>
+          </label>`).join('')}
+      </div>`).join('')}
+      <p class="small faint">Settings are saved in this browser and apply to every combat.</p>
+    </div>
+    <div class="modal-foot"><button class="btn" data-x>Close</button></div>`);
+  m.addEventListener('click', e => { if (e.target.closest('[data-x]')) closeModal(); });
+  m.addEventListener('change', e => {
+    const key = e.target.dataset.setting; if (!key) return;
+    const def = SETTING_DEFS.find(d => d.key === key);
+    settings[key] = e.target.checked;
+    save(STORE.settings, settings);
+    def.onChange?.(settings[key]);
+    commit();
+  });
+}
+
 /* ---------- Rules reference ---------- */
 function openRules() {
   const m = openModal(`
@@ -1821,7 +1925,7 @@ function quickDamage(c, type) {
 
 document.addEventListener('click', e => {
   if (e.target.closest('#modalRoot')) return;
-  if (e.target.closest('select')) return;
+  if (e.target.closest('select, input, label.init')) return; // form controls never trigger card actions
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const act = el.dataset.act;
@@ -1881,6 +1985,7 @@ document.addEventListener('click', e => {
         commit();
       });
     case 'expand': c.expanded = !c.expanded; return commit();
+    case 'collapse': c.collapsed = !c.collapsed; if (c.collapsed) c.expanded = false; return commit();
     case 'init':
       if (!canAct(c)) return toast(`${c.name} can't act.`);
       c._editInit = true; render();
@@ -1998,14 +2103,6 @@ document.addEventListener('change', e => {
     commit();
     return;
   }
-  if (el.id === 'setKeepInit') { settings.keepInit = el.checked; save(STORE.settings, settings); toast(el.checked ? 'Initiative now carries over between turns (house rule).' : 'Initiative is re-rolled every turn (rules as written).'); render(); }
-  if (el.id === 'setSkipDeclare') {
-    settings.skipDeclare = el.checked; save(STORE.settings, settings);
-    if (settings.skipDeclare && combat.phase === 'declare') advancePhase(); // jump straight to actions
-    toast(el.checked ? 'Declaration step skipped: each character decides on their own turn (house rule).' : 'Declaration step restored (rules as written).');
-    commit();
-  }
-  if (el.id === 'setAutoSoak') { settings.autoSoak = el.checked; save(STORE.settings, settings); }
   if (el.id === 'encounterName') { combat.name = el.value.trim(); persist(); }
 });
 function commitInitInput(el) {
@@ -2054,6 +2151,7 @@ $('#btnShare').onclick = openShare;
 $('#btnPlayers').onclick = openPlayers;
 $('#btnWeapons').onclick = openWeapons;
 $('#btnRules').onclick = openRules;
+$('#btnSettings').onclick = openSettings;
 $('#btnClear').onclick = async () => {
   if (combat.combatants.length && !(await ask('End combat and remove all combatants?', { ok: 'End combat', danger: true }))) return;
   combat = newCombat(); logEntries = []; commit();
@@ -2064,6 +2162,19 @@ $('#btnReset').onclick = async () => {
   resetCombat(); commit();
 };
 window.addEventListener('hashchange', checkUrlPayload);
+// Keep several open tabs (e.g. the tracker and preview.html) in sync: another tab saved, so reload that state.
+window.addEventListener('storage', e => {
+  if (!e.newValue) return;
+  try {
+    if (e.key === STORE.combat) { combat = JSON.parse(e.newValue); logEntries = combat.log || []; }
+    else if (e.key === STORE.pcs) pcs = JSON.parse(e.newValue);
+    else if (e.key === STORE.weapons) customWeapons = JSON.parse(e.newValue);
+    else if (e.key === STORE.presets) customPresets = JSON.parse(e.newValue);
+    else if (e.key === STORE.settings) Object.assign(settings, JSON.parse(e.newValue));
+    else return;
+  } catch { return; }
+  render();
+});
 
 // Keyboard: N = next, P = previous (when not typing)
 document.addEventListener('keydown', e => {

@@ -73,12 +73,30 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 8px; }
 .brand-mark { color: var(--blood-2); font-size: 22px; }
-.encounter-name { background: transparent !important; border: 1px solid transparent !important; font-size: 18px; font-weight: 600; width: 260px; font-family: Georgia, "Times New Roman", serif; }
+.encounter-name { background: transparent !important; border: 1px solid transparent !important; font-size: 17px; font-weight: 600; width: 200px; font-family: Georgia, "Times New Roman", serif; }
 .encounter-name:hover { border-color: var(--line) !important; }
-.turn-info { display: flex; gap: 10px; align-items: center; color: var(--muted); }
-.turn-info .pill { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 10px; color: var(--text); }
+.turn-info { display: flex; gap: 8px; align-items: center; color: var(--muted); flex: 1; min-width: 0; }
+.turn-info .status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.turn-info .status b { color: var(--text); }
+.turn-info .pill { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 10px; color: var(--text); white-space: nowrap; flex: none; }
 .turn-info .pill b { color: var(--gold); }
-.top-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.top-actions { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.btn.icon { padding: 5px 8px; min-width: 34px; }
+/* Gold dot on the Settings button while any house rule is on */
+#btnSettings { position: relative; }
+#btnSettings.has-rules::after { content: ""; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+/* Settings dialog: switch-style toggles */
+.settings .setting { display: flex; gap: 12px; align-items: flex-start; padding: 8px 4px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.settings .setting:last-child { border-bottom: 0; }
+.settings .setting input { position: absolute; opacity: 0; pointer-events: none; }
+.settings .sw { flex: none; width: 36px; height: 20px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line-2); position: relative; margin-top: 1px; transition: background .15s; }
+.settings .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+.settings input:checked + .sw { background: #3b2a12; border-color: #8b6a2a; }
+.settings input:checked + .sw::after { transform: translateX(16px); background: var(--gold); }
+.settings input:focus-visible + .sw { outline: 2px solid var(--blood-2); outline-offset: 2px; }
+.settings .txt { display: flex; flex-direction: column; gap: 2px; }
+.settings .txt b { color: var(--text); font-weight: 600; }
+.settings .txt small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
 
 /* Layout */
@@ -171,6 +189,20 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .badge.dead { border-color: #777; color: #ddd; background: #333; }
 .badge.chip { cursor: pointer; }
 .badge.chip.on { background: #3b2a12; color: #f2d08a; border-color: #8b6a2a; }
+
+/* Collapsed card: one slim row — small initiative box, name + creature, buttons */
+.card.collapsed { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "init left right"; padding: 3px 8px; gap: 0 10px; align-items: center; }
+.card.collapsed { cursor: pointer; }
+.card.collapsed:hover { background: #201b22; }
+.card.collapsed .c-left { gap: 0; }
+.card.collapsed .c-right { align-items: center; }
+.card.collapsed .cname { font-size: 14px; }
+.card.collapsed .init { min-width: 38px; min-height: 26px; padding: 0 4px; }
+.card.collapsed .init .v { font-size: 15px; }
+.card.collapsed .init .r { display: none; }
+.card.collapsed .init-input { width: 34px; font-size: 15px; }
+.card.collapsed .init-input::placeholder { font-size: 10px; }
+.card.collapsed .c-actions .btn.sm { padding: 1px 7px; }
 
 /* Health track */
 .health { display: flex; gap: 2px; }
@@ -282,21 +314,56 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .list-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .list-row:last-child { border-bottom: 0; }
 
+/* Attack dialog — sized to fit a 1536×695 laptop screen without scrolling:
+ * setup on top, then the four roll steps side by side. */
+.modal-backdrop.attack { padding-top: 12px; padding-bottom: 12px; }
+/* auto margins centre it vertically, but never push the top off-screen when it is taller than the window */
+.modal.attack { width: min(1260px, 100%); margin-block: auto; }
+.wgroup { display: inline-flex; }
+.wgroup .wchip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.wreload { background: var(--bg-2); border: 1px solid var(--line-2); border-left: 0; border-radius: 0 6px 6px 0; color: var(--gold); padding: 0 8px; cursor: pointer; font-size: 14px; }
+.wreload:hover:not(:disabled) { background: #3a2a30; color: var(--text); }
+.wreload:disabled { color: var(--faint); cursor: default; }
+.wchip .ammo.out { color: var(--leth); }
+.modal.attack .ammo-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 2px 0 4px; }
+.modal.attack .ammo-row b { color: var(--gold); }
+.modal.attack .ammo-row .btn { margin-left: auto; }
+.modal.attack .ammo-row.empty b, .modal.attack .ammo-row .warn { color: var(--leth); }
+.modal.attack .modal-head { padding: 8px 14px; }
+.modal.attack .modal-body { padding: 10px 14px; }
+.modal.attack .step { padding: 8px 10px; margin-bottom: 8px; }
+.modal.attack .step h3 { margin-bottom: 6px; }
+.modal.attack .atk-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.modal.attack .atk-grid .step { margin-bottom: 0; }
+.modal.attack .arow { margin-bottom: 5px; }
+.modal.attack .arow-pair { display: flex; flex-wrap: wrap; gap: 0 28px; }
+.modal.attack .mods { padding-top: 6px; gap: 6px 14px; }
+.modal.attack .note { margin-top: 5px; padding: 4px 8px; }
+.modal.attack .bigline { margin: 2px 0 4px; font-size: 14px; }
+.modal.attack .bigline b { font-size: 16px; }
+.modal.attack .calc { margin: 2px 0; }
+.modal.attack .roll-row { margin-top: 6px; }
+@media (max-width: 1100px) { .modal.attack .atk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .modal.attack .atk-grid { grid-template-columns: 1fr; } }
 /* Attack dialog */
 .atk .step { margin-bottom: 10px; }
 .arow { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
 .arow .al { width: 70px; flex: none; padding-top: 4px; font-size: 12px; color: var(--muted); }
 .chips { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-.wchip.on, .tchip.on { border-color: var(--blood-2); background: var(--blood-dim); box-shadow: 0 0 0 1px var(--blood-2); }
+.wchip.on { border-color: var(--blood-2); background: var(--blood-dim); box-shadow: 0 0 0 1px var(--blood-2); }
 button.wchip { font: inherit; font-size: 12px; color: var(--text); }
+/* Target chips: neutral until picked; the picked one gets a clear red frame and a crosshair. */
 .tchip {
-  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 3px 10px; cursor: pointer;
-  background: var(--bg-2); border: 1px solid var(--line-2); border-left: 3px solid var(--line-2); border-radius: 6px; color: var(--text); line-height: 1.25;
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 4px 12px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px; color: var(--text); line-height: 1.25;
 }
-.tchip.pc { border-left-color: var(--info); }
-.tchip.npc { border-left-color: var(--blood); }
-.tchip:hover { border-color: #66566c; }
-.tchip small { color: var(--faint); font-size: 10.5px; }
+.tchip b { font-weight: 600; }
+.tchip small { color: var(--muted); font-size: 11px; }
+.tchip small .hurt { color: #f0a0aa; }
+.tchip:hover { border-color: #7a6a80; background: #2c2630; }
+.tchip.on { border-color: var(--blood-2); background: #3a1820; box-shadow: 0 0 0 1px var(--blood-2); }
+.tchip.on b::before { content: "◎ "; color: var(--blood-2); }
+.tchip.on small { color: #d7b8be; }
 .tchip.out { opacity: .5; }
 .seg { display: inline-flex; flex-wrap: wrap; }
 .seg button {

@@ -4,3 +4,6 @@ Vampire_The_Masquerade_Revised_Edition.md
 
 # Local tooling
 .claude/
+
+# Local layout-testing page (laptop-size frame), not part of the app
+preview.html

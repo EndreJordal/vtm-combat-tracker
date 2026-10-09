@@ -52,7 +52,7 @@ const HEALTH_MOVEMENT = {
 /* Armor Chart */
 const ARMOR = [
   { r: 0, n: 'None', pen: 0 },
-  { r: 1, n: 'Class One (reinforced clothing)', s: 'Reinforced clothing', pen: 0 },
+  { r: 1, n: 'Class One (reinforced clothing)', s: 'Reinforced', pen: 0 },
   { r: 2, n: 'Class Two (armor T-shirt)', s: 'Armor T-shirt', pen: 1 },
   { r: 3, n: 'Class Three (Kevlar vest)', s: 'Kevlar vest', pen: 1 },
   { r: 4, n: 'Class Four (flak jacket)', s: 'Flak jacket', pen: 2 },

@@ -19,10 +19,11 @@
       <button id="btnNext" class="btn primary" title="Next step">Next ▶</button>
       <button id="btnNewRound" class="btn" title="End turn and start a new one">New turn</button>
       <span class="sep"></span>
-      <button id="btnShare" class="btn" title="Create a link that starts this encounter">Share link</button>
-      <button id="btnPlayers" class="btn" title="Configure player characters">Players</button>
-      <button id="btnWeapons" class="btn" title="Weapon catalog">Weapons</button>
-      <button id="btnRules" class="btn" title="Combat rules quick reference">Rules</button>
+      <button id="btnShare" class="btn icon" title="Share link: create a link that starts this encounter" aria-label="Share link">🔗</button>
+      <button id="btnPlayers" class="btn icon" title="Players: configure player characters" aria-label="Players">👥</button>
+      <button id="btnWeapons" class="btn icon" title="Weapons: weapon catalog" aria-label="Weapons">⚔</button>
+      <button id="btnRules" class="btn icon" title="Rules: combat quick reference" aria-label="Rules">📖</button>
+      <button id="btnSettings" class="btn" title="Settings">⚙ Settings</button>
       <button id="btnReset" class="btn" title="Keep combatants; restore health, resources, ammo and initiative">Reset combat</button>
       <button id="btnClear" class="btn danger" title="Remove all combatants">End combat</button>
     </div>
@@ -30,7 +31,6 @@
 
   <main class="layout">
     <section class="tracker">
-      <div id="phaseBanner" class="phase-banner"></div>
       <div id="combatList" class="combat-list"></div>
     </section>
 

@@ -192,6 +192,8 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .preset { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; border: 1px solid transparent; }
 .preset:hover { background: var(--panel-2); border-color: var(--line); }
 .preset .name { flex: 1; min-width: 0; }
+.preset-thumb { width: 30px; height: 36px; object-fit: cover; object-position: 50% 20%; flex: none; display: block; background: var(--bg-2); }
+.preset-thumb.none { border: 1px dashed var(--line); }
 .preset .name small { display: block; color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty { color: var(--faint); text-align: center; padding: 24px 8px; border: 1px dashed var(--line-2); border-radius: var(--radius); }
 

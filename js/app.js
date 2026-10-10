@@ -203,6 +203,14 @@ function makeCombatant(t, side) {
     expanded: false,
   };
 }
+/* Preset portraits: images/presets/<id>.jpg (full) and <id>.thumb.jpg, built by tools/build_preset_portraits.py.
+ * js/preset-portraits.js lists which presets have one. A combatant's own portrait always wins. */
+const bundlePic = (id, size) => (id && typeof PRESET_PORTRAITS !== 'undefined' && PRESET_PORTRAITS.has(id)
+  ? `images/presets/${id}${size === 'thumb' ? '.thumb' : ''}.jpg` : '');
+const portraitFull = c => c.portrait || bundlePic(c.presetId, 'full');
+const portraitThumb = c => c.portrait || bundlePic(c.presetId, 'thumb');
+const presetThumb = p => p.portrait || bundlePic(p.id, 'thumb');
+try { localStorage.removeItem('vtm.presetPortraits'); } catch {} // the old private import, no longer used
 const presetTemplate = p => ({ ...p, attrs: p.a || p.attrs, side: 'npc', presetId: p.id });
 let customPresets = load(STORE.presets, []);
 const allPresets = () => [...customPresets.map(p => ({ ...p, cat: 'My Enemies', custom: true })), ...PRESETS];
@@ -732,8 +740,9 @@ function cardHTML(c, ctx) {
     ? (c.st.delayed ? `<button class="btn sm on" data-act="actnow" data-id="${c.id}" title="Delayed character acts now (may interrupt)">Act now</button>`
       : `<button class="btn sm" data-act="status" data-s="delayed" data-id="${c.id}" title="Delay action">Delay</button>`) : '';
 
-  const details = c.expanded ? `<div class="details ${c.portrait ? 'with-portrait' : ''}">
-      ${c.portrait ? `<img class="portrait-lg" src="${esc(c.portrait)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}
+  const picFull = portraitFull(c), picThumb = portraitThumb(c);
+  const details = c.expanded ? `<div class="details ${picFull ? 'with-portrait' : ''}">
+      ${picFull ? `<img class="portrait-lg" src="${esc(picFull)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}
       <div class="details-text">
       <div><b>Attributes:</b> ${ATTRS.map(([k, n]) => `${n} ${c.attrs[k]}${eff(c, k) !== c.attrs[k] ? ` (<b>${eff(c, k)}</b>)` : ''}`).join(', ')}</div>
       <div><b>Abilities:</b> ${esc(traitsToString(c.abil)) || '—'}</div>
@@ -753,7 +762,7 @@ function cardHTML(c, ctx) {
   if (c.collapsed) {
     return `<article class="${classes} collapsed" data-id="${c.id}" title="Click: show the card · double-click: full details">
       <div class="c-init">${initBox}</div>
-      <div class="c-left"><div class="c-name">${c.portrait ? `<img class="portrait-xs" src="${esc(c.portrait)}" alt="" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}<span class="cname">${esc(c.name)}</span>
+      <div class="c-left"><div class="c-name">${picThumb ? `<img class="portrait-xs" src="${esc(picThumb)}" alt="" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}<span class="cname">${esc(c.name)}</span>
         <span class="badge desc ${allegianceOf(c)}" title="Click to switch allegiance">${esc(descriptor(c))} ▾<select class="allegiance-sel" data-field="allegiance" data-id="${c.id}" aria-label="Allegiance"><option value="enemy" ${allegianceOf(c) === 'enemy' ? 'selected' : ''}>Enemy</option><option value="ally" ${allegianceOf(c) === 'ally' ? 'selected' : ''}>Ally</option></select></span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}</div></div>
       <div class="c-right"><div class="c-actions">
         ${delayBtn}
@@ -775,7 +784,7 @@ function cardHTML(c, ctx) {
     ? `<button class="btn xs" data-act="wpignore" data-id="${c.id}" title="Spend 1 Willpower: ignore wound penalties for one turn">Ignore wounds</button>` : '';
 
   return `<article class="${classes}" data-id="${c.id}">
-    <div class="c-init ${c.portrait ? 'has-portrait' : ''}">${initBox}${c.portrait ? `<img class="portrait" src="${esc(c.portrait)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy" onerror="this.classList.add('broken'); this.title='Image not found: ${esc(c.portrait).replace(/'/g, '')}'">` : ''}</div>
+    <div class="c-init ${picThumb ? 'has-portrait' : ''}">${initBox}${picThumb ? `<img class="portrait" src="${esc(picThumb)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy" onerror="this.classList.add('broken'); this.title='Image not found'">` : ''}</div>
 
     <div class="c-left">
       <div class="c-name"><span class="cname">${esc(c.name)}</span>
@@ -852,7 +861,9 @@ function renderAntagonists() {
     ${cats.map(cat => `<div class="cat-title">${esc(cat)}</div>` + presets.filter(p => p.cat === cat).map(p => {
       const ws = (p.weapons || []).map(id => getWeapon(id)?.name).filter(Boolean).join(', ') || 'unarmed';
       const a = p.a || (Array.isArray(p.attrs) ? p.attrs : ATTR_KEYS.map(k => p.attrs?.[k]));
+      const thumb = presetThumb(p);
       return `<div class="preset">
+        ${thumb ? `<img class="preset-thumb" src="${esc(thumb)}" alt="" loading="lazy">` : '<span class="preset-thumb none"></span>'}
         <div class="name">${esc(p.name)} <span class="faint small">${KINDS[p.kind]?.label || ''}</span>
           <small>Dex ${a[1]} Wits ${a[8]} Sta ${a[2]} · WP ${typeof p.wp === 'object' ? p.wp.max : p.wp} · ${esc(ws)}${p.armor ? ` · armor ${p.armor}` : ''}</small></div>
         ${p.custom ? `<button class="btn xs danger" data-act="delpreset" data-p="${p.id}" title="Delete from My Enemies">✕</button>` : ''}
@@ -2087,7 +2098,7 @@ document.addEventListener('click', e => {
     case 'expand': c.expanded = !c.expanded; return commit();
     case 'portrait': {
       const m = openModal(`<div class="modal-head"><h2>${esc(c.name)}</h2><span class="muted small">${esc(descriptor(c))}</span><button class="btn ghost right" data-x>✕</button></div>
-        <div class="modal-body portrait-view"><img src="${esc(c.portrait)}" alt="${esc(c.name)}"></div>`, { cls: 'portrait-dlg' });
+        <div class="modal-body portrait-view"><img src="${esc(portraitFull(c))}" alt="${esc(c.name)}"></div>`, { cls: 'portrait-dlg' });
       m.addEventListener('click', e => { if (e.target.closest('[data-x]') || e.target.tagName === 'IMG') closeModal(); });
       return;
     }

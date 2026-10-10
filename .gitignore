@@ -7,3 +7,9 @@ Vampire_The_Masquerade_Revised_Edition.md
 
 # Local layout-testing page (laptop-size frame), not part of the app
 preview.html
+
+# Original pictures for the preset portraits (source material; the processed ones live in images/presets/)
+portrait-sources/
+
+# Python bytecode
+__pycache__/

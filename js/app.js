@@ -191,7 +191,9 @@ function makeCombatant(t, side) {
     boost: { str: 0, dex: 0, sta: 0 },
     weapons,
     regen: !!t.regen,
+    allegiance: t.allegiance === 'ally' || t.allegiance === 'enemy' ? t.allegiance : null,
     // A preset's favourites come from the preset itself; anyone else keeps their starting loadout plus any listed favourites.
+    portrait: typeof t.portrait === 'string' ? t.portrait : '',
     favored: t.presetId ? [] : [...new Set([...(t.favored || []), ...weapons.map(w => w.wid)])].filter(id => getWeapon(id)),
     humanity: t.humanity ?? '',
     notes: t.notes || '',
@@ -203,11 +205,11 @@ function makeCombatant(t, side) {
 }
 const presetTemplate = p => ({ ...p, attrs: p.a || p.attrs, side: 'npc', presetId: p.id });
 let customPresets = load(STORE.presets, []);
-const allPresets = () => [...customPresets.map(p => ({ ...p, cat: 'My Antagonists', custom: true })), ...PRESETS];
+const allPresets = () => [...customPresets.map(p => ({ ...p, cat: 'My Enemies', custom: true })), ...PRESETS];
 const getPreset = id => allPresets().find(p => p.id === id);
 
 /* Serialize a combatant back to a compact template. */
-function toTemplate(c, withState = false) {
+function toTemplate(c) {
   const t = {
     name: c.name, side: c.side, kind: c.kind,
     attrs: ATTR_KEYS.map(k => c.attrs[k]),
@@ -221,22 +223,11 @@ function toTemplate(c, withState = false) {
   if (c.health !== 'standard') t.health = c.health;
   if (c.regen) t.regen = true;
   if (c.favored?.length) t.favored = [...c.favored];
+  if (c.portrait) t.portrait = c.portrait;
   if (c.humanity) t.humanity = c.humanity;
   if (c.notes) t.notes = c.notes;
-  if (withState) addState(t, c);
   return t;
 }
-function addState(t, c) {
-  if (c.dmg.a || c.dmg.l || c.dmg.b) t.dmg = { ...c.dmg };
-  if (c.weapons.some(w => getWeapon(w.wid)?.clip && w.ammo !== getWeapon(w.wid).clip)) {
-    t.weapons = c.weapons.map(w => (getWeapon(w.wid)?.clip ? { wid: w.wid, ammo: w.ammo } : w.wid));
-  }
-  if (c.extra && c.extra.cur !== c.extra.max) t.extra = { label: c.extra.label, max: c.extra.max, cur: c.extra.cur };
-  if (c.wp.cur !== c.wp.max) t.wp = { max: c.wp.max, cur: c.wp.cur };
-  if (c.bp.cur !== c.bp.max) t.bp = { max: c.bp.max, cur: c.bp.cur };
-  if (c.state !== 'active') t.state = c.state;
-}
-
 /* Effective attribute: blood boosts and werewolf battle form (Physical doubled). */
 function eff(c, k) {
   let v = num(c.attrs[k]) + (c.boost?.[k] || 0);
@@ -309,7 +300,9 @@ function evalDice(dice, diff, canBotch = true) {
   const s = dice.filter(d => d >= diff).length;
   const ones = dice.filter(d => d === 1).length;
   const succ = Math.max(0, s - ones);
-  return { dice, diff, succ, botch: canBotch && s === 0 && ones > 0 };
+  // Revised: a botch is no successes at all plus at least one 1; successes cancelled by 1s are a plain failure.
+  const botch = canBotch && s === 0 && ones > 0;
+  return { dice, diff, succ, rolled: s, botch };
 }
 function diceHTML(r, autoSucc = 0) {
   if (!r) return '';
@@ -320,13 +313,32 @@ function diceHTML(r, autoSucc = 0) {
 function resultHTML(r, autoSucc = 0) {
   const total = r.succ + autoSucc;
   if (r.botch && !autoSucc) return '<span class="result botch">Botch!</span>';
+  if (!total && r.rolled) return `<span class="result bad" title="Every success was cancelled by a 1. Revised rules: a failure, not a botch.">Failure (1s cancelled ${r.rolled})</span>`;
   return `<span class="result ${total > 0 ? 'good' : 'bad'}">${total} success${total === 1 ? '' : 'es'}</span>`;
 }
 
 /* ============================================================
  * State
  * ============================================================ */
-const settings = Object.assign({ autoSoak: false, addQty: 1, keepInit: false, skipDeclare: false, autoCollapse: false }, load(STORE.settings, {}));
+const settings = Object.assign({ autoSoak: false, addQty: 1, keepInit: false, skipDeclare: false, autoCollapse: false, theme: 'camarilla' }, load(STORE.settings, {}));
+
+/* Dark themes. Colours live in css/styles.css (:root[data-theme=…]); swatch = background, panel, accent, secondary. */
+const THEMES = [
+  { id: 'camarilla', name: 'Camarilla', desc: 'Crimson and gold', sw: ['#0d0b0e', '#231e26', '#e0284a', '#c9a24a'] },
+  { id: 'tremere', name: 'Tremere', desc: 'Violet and gold', sw: ['#0c0b10', '#221e2d', '#9b5cf0', '#c9a24a'] },
+  { id: 'ventrue', name: 'Ventrue', desc: 'Sapphire and silver', sw: ['#0a0c11', '#1d2330', '#4d86f0', '#b8c2d4'] },
+  { id: 'nosferatu', name: 'Nosferatu', desc: 'Sewer moss and brass', sw: ['#0a0d0b', '#1d251e', '#6fb352', '#b9a35a'] },
+  { id: 'toreador', name: 'Toreador', desc: 'Rose and champagne', sw: ['#0e0b0d', '#271e23', '#e86a9e', '#d9b38c'] },
+  { id: 'sabbat', name: 'Sabbat', desc: 'Ember and ash', sw: ['#0c0a08', '#251e17', '#f0712e', '#d6a64a'] },
+  { id: 'giovanni', name: 'Giovanni', desc: 'Grave teal and bone', sw: ['#080b0c', '#1b2427', '#36b5ae', '#d8cfb6'] },
+  { id: 'obsidian', name: 'Obsidian', desc: 'Near-black and steel', sw: ['#050505', '#1a1a1c', '#d6334a', '#bdbdc4'] },
+];
+function applyTheme() {
+  const t = THEMES.find(x => x.id === settings.theme) ? settings.theme : 'camarilla';
+  if (t === 'camarilla') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+}
+applyTheme();
 let pcs = load(STORE.pcs, []);
 let combat = load(STORE.combat, null) || newCombat();
 let logEntries = combat.log || [];
@@ -591,7 +603,7 @@ function renderTurnInfo() {
 function renderList() {
   const list = $('#combatList');
   if (!combat.combatants.length) {
-    list.innerHTML = `<div class="empty">No combatants yet.<br>Add antagonists or players from the panel on the right, or open an encounter link.</div>`;
+    list.innerHTML = `<div class="empty">No combatants yet.<br>Add enemies or players from the panel on the right, or open an encounter link.</div>`;
     return;
   }
   const cur = currentActor();
@@ -627,8 +639,10 @@ function dotsHTML(cur, max, cls, act, id) {
 }
 
 /* "NPC · Vampire", plus the preset's name when the combatant has been renamed: "NPC · Vampire · Thin-Blood Singer". */
+const allegianceOf = c => c.allegiance || (c.side === 'pc' ? 'ally' : 'enemy');
+const allegianceLabel = c => (allegianceOf(c) === 'ally' ? 'Ally' : 'Enemy');
 function descriptor(c) {
-  const parts = [c.side === 'pc' ? 'PC' : 'NPC', KINDS[c.kind].label];
+  const parts = [c.side === 'pc' ? 'PC' : 'NPC', allegianceLabel(c), KINDS[c.kind].label];
   const p = c.presetId && getPreset(c.presetId);
   if (p && c.name.replace(/ \d+$/, '') !== p.name) parts.push(p.name);
   return parts.join(' · ');
@@ -638,7 +652,7 @@ function cardHTML(c, ctx) {
   const wi = woundInfo(c);
   const lv = healthOf(c);
   const kind = KINDS[c.kind];
-  const classes = ['card', c.side, ctx.current && 'current', ctx.declaring && 'declaring', c.acted && 'acted', (isOut(c) || wi.incap) && 'out', c.inactive && 'inactive'].filter(Boolean).join(' ');
+  const classes = ['card', c.side, allegianceOf(c), ctx.current && 'current', ctx.declaring && 'declaring', c.acted && 'acted', (isOut(c) || wi.incap) && 'out', c.inactive && 'inactive', c.expanded && 'expanded'].filter(Boolean).join(' ');
   const benchBtn = c.inactive
     ? `<button class="btn sm bench on" data-act="bench" data-id="${c.id}" title="Activate: join the fight${c.init ? ` (keeps initiative ${c.init.total})` : ' — needs an initiative score'}">▶</button>`
     : `<button class="btn sm bench" data-act="bench" data-id="${c.id}" title="Deactivate: move to the Inactive section to join later (keeps any initiative score)">⏸</button>`;
@@ -667,7 +681,7 @@ function cardHTML(c, ctx) {
   const initBox = editing
     ? `<label class="init entry" title="Type the initiative total and press Enter (rating ${initRating(c)})${c.side === 'npc' ? '. Leave empty and press Enter to re-roll.' : ''}"><input class="init-input mono" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" placeholder="total" value="${c._editInit && c.init ? c.init.total : ''}" data-field="inittotal" data-id="${c.id}"><span class="r">rtg ${initRating(c)}</span></label>`
     : c.init
-    ? `<div class="init" data-act="init" data-id="${c.id}" title="${c.init.manual ? 'Entered total' : `Roll ${c.init.roll} + rating ${c.init.rating}`}. Click to change."><span class="v mono">${c.init.total}</span><span class="r">${c.init.manual ? `rtg ${c.init.rating}` : `${c.init.roll}+${c.init.rating}`}${ctx.sim ? ' =' : ''}</span></div>`
+    ? `<div class="init" data-act="init" data-id="${c.id}" title="${c.init.manual ? `Entered total (rating ${c.init.rating})` : `Roll ${c.init.roll} + rating ${c.init.rating}`}${ctx.sim ? ' · tied: acts at the same time' : ''}. Click to change."><span class="v mono">${c.init.total}</span><span class="r">${c.init.manual ? `rtg ${c.init.rating}` : `${c.init.roll}+${c.init.rating}`}${ctx.sim ? ' =' : ''}</span></div>`
     : `<div class="init none" data-act="init" data-id="${c.id}" title="Click to roll or enter initiative"><span class="v">—</span><span class="r">rtg ${initRating(c)}</span></div>`;
 
   const chips = STATUSES.filter(s => !s.kinds || s.kinds.includes(c.kind))
@@ -718,7 +732,9 @@ function cardHTML(c, ctx) {
     ? (c.st.delayed ? `<button class="btn sm on" data-act="actnow" data-id="${c.id}" title="Delayed character acts now (may interrupt)">Act now</button>`
       : `<button class="btn sm" data-act="status" data-s="delayed" data-id="${c.id}" title="Delay action">Delay</button>`) : '';
 
-  const details = c.expanded ? `<div class="details">
+  const details = c.expanded ? `<div class="details ${c.portrait ? 'with-portrait' : ''}">
+      ${c.portrait ? `<img class="portrait-lg" src="${esc(c.portrait)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}
+      <div class="details-text">
       <div><b>Attributes:</b> ${ATTRS.map(([k, n]) => `${n} ${c.attrs[k]}${eff(c, k) !== c.attrs[k] ? ` (<b>${eff(c, k)}</b>)` : ''}`).join(', ')}</div>
       <div><b>Abilities:</b> ${esc(traitsToString(c.abil)) || '—'}</div>
       <div><b>Disciplines:</b> ${esc(traitsToString(c.disc)) || '—'}</div>
@@ -730,15 +746,15 @@ function cardHTML(c, ctx) {
         <button class="btn xs" data-act="boost" data-k="sta" data-id="${c.id}">+1 Sta</button>
         ${(c.boost.str || c.boost.dex || c.boost.sta) ? `<button class="btn xs" data-act="unboost" data-id="${c.id}">Clear boosts</button>` : ''}</div>` : ''}
       ${isOut(c) ? `<div class="row" style="margin-top:6px"><button class="btn xs" data-act="revive" data-id="${c.id}">Set state: active</button></div>` : `<div class="row" style="margin-top:6px"><button class="btn xs" data-act="setstate" data-v="torpor" data-id="${c.id}">Send to torpor</button><button class="btn xs" data-act="setstate" data-v="dead" data-id="${c.id}">Mark dead</button></div>`}
+      </div>
     </div>` : '';
 
   const collapseBtn = `<button class="btn sm" data-act="collapse" data-id="${c.id}" title="${c.collapsed ? 'Show the full card' : 'Collapse to a single line'}">${c.collapsed ? '+' : '−'}</button>`;
   if (c.collapsed) {
-    // Clicking anywhere on a collapsed card (except its buttons and initiative box) opens it again.
-    return `<article class="${classes} collapsed" data-id="${c.id}" data-act="collapse" title="Click to show the full card">
+    return `<article class="${classes} collapsed" data-id="${c.id}" title="Click: show the card · double-click: full details">
       <div class="c-init">${initBox}</div>
-      <div class="c-left"><div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}</div></div>
+      <div class="c-left"><div class="c-name">${c.portrait ? `<img class="portrait-xs" src="${esc(c.portrait)}" alt="" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy">` : ''}<span class="cname">${esc(c.name)}</span>
+        <span class="badge desc ${allegianceOf(c)}" title="Click to switch allegiance">${esc(descriptor(c))} ▾<select class="allegiance-sel" data-field="allegiance" data-id="${c.id}" aria-label="Allegiance"><option value="enemy" ${allegianceOf(c) === 'enemy' ? 'selected' : ''}>Enemy</option><option value="ally" ${allegianceOf(c) === 'ally' ? 'selected' : ''}>Ally</option></select></span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}</div></div>
       <div class="c-right"><div class="c-actions">
         ${delayBtn}
         ${benchBtn}
@@ -759,11 +775,11 @@ function cardHTML(c, ctx) {
     ? `<button class="btn xs" data-act="wpignore" data-id="${c.id}" title="Spend 1 Willpower: ignore wound penalties for one turn">Ignore wounds</button>` : '';
 
   return `<article class="${classes}" data-id="${c.id}">
-    <div class="c-init">${initBox}</div>
+    <div class="c-init ${c.portrait ? 'has-portrait' : ''}">${initBox}${c.portrait ? `<img class="portrait" src="${esc(c.portrait)}" alt="${esc(c.name)}" data-act="portrait" data-id="${c.id}" title="Click to enlarge" loading="lazy" onerror="this.classList.add('broken'); this.title='Image not found: ${esc(c.portrait).replace(/'/g, '')}'">` : ''}</div>
 
     <div class="c-left">
       <div class="c-name"><span class="cname">${esc(c.name)}</span>
-        <span class="badge ${c.side === 'pc' ? 'pc' : ''}">${esc(descriptor(c))}</span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}
+        <span class="badge desc ${allegianceOf(c)}" title="Click to switch allegiance">${esc(descriptor(c))} ▾<select class="allegiance-sel" data-field="allegiance" data-id="${c.id}" aria-label="Allegiance"><option value="enemy" ${allegianceOf(c) === 'enemy' ? 'selected' : ''}>Enemy</option><option value="ally" ${allegianceOf(c) === 'ally' ? 'selected' : ''}>Ally</option></select></span>${ctx.joinHint ? `<span class="badge join" title="Where ${esc(c.name)} would act if activated now">→ ${esc(ctx.joinHint)}</span>` : ''}
         ${stateBadge}${extraBadge}${celBadge}${c.acted ? '<span class="badge">acted</span>' : ''}${chips}
       </div>
       <div class="c-healthrow">
@@ -830,7 +846,7 @@ function renderAntagonists() {
   const cats = [...new Set(presets.map(p => p.cat))];
   el.innerHTML = `
     <div class="row" style="margin-bottom:8px">
-      <input id="presetSearch" class="grow" placeholder="Search antagonists…" value="${esc(presetFilter)}">
+      <input id="presetSearch" class="grow" placeholder="Search enemies…" value="${esc(presetFilter)}">
       <label class="row" title="How many to add per click">×<input id="addQty" type="number" min="1" max="20" value="${settings.addQty}" class="num-sm"></label>
     </div>
     ${cats.map(cat => `<div class="cat-title">${esc(cat)}</div>` + presets.filter(p => p.cat === cat).map(p => {
@@ -839,7 +855,7 @@ function renderAntagonists() {
       return `<div class="preset">
         <div class="name">${esc(p.name)} <span class="faint small">${KINDS[p.kind]?.label || ''}</span>
           <small>Dex ${a[1]} Wits ${a[8]} Sta ${a[2]} · WP ${typeof p.wp === 'object' ? p.wp.max : p.wp} · ${esc(ws)}${p.armor ? ` · armor ${p.armor}` : ''}</small></div>
-        ${p.custom ? `<button class="btn xs danger" data-act="delpreset" data-p="${p.id}" title="Delete from My Antagonists">✕</button>` : ''}
+        ${p.custom ? `<button class="btn xs danger" data-act="delpreset" data-p="${p.id}" title="Delete from My Enemies">✕</button>` : ''}
         <button class="btn sm" data-act="addpreset" data-p="${p.id}" title="Add to combat">+ Add</button>
       </div>`;
     }).join('')).join('') || '<div class="empty">No matches.</div>'}
@@ -863,9 +879,9 @@ function renderPlayersTab() {
 }
 function renderCustomTab() {
   $('#tab-custom').innerHTML = `
-    <p class="small muted" style="margin-top:0">Create a one-off combatant with the full editor. Tick “Save to My Antagonists” in the editor to reuse it later.</p>
+    <p class="small muted" style="margin-top:0">Create a one-off combatant with the full editor. Tick “Save to My Enemies” in the editor to reuse it later.</p>
     <div class="row">
-      <button class="btn primary" data-act="newcustom" data-side="npc">New antagonist</button>
+      <button class="btn primary" data-act="newcustom" data-side="npc">New enemy</button>
       <button class="btn" data-act="newcustom" data-side="pc">New ally / PC (this fight only)</button>
     </div>
     <div class="fieldset" style="margin-top:14px"><div class="legend">Quick extra</div>
@@ -981,8 +997,15 @@ function openEditor({ combatant, template, mode, onSave, focus }) {
           <div class="f" style="grid-column: span 2"><label>Name</label><input id="eName" value="${esc(c.name)}"></div>
           ${mode === 'pc' ? `<div class="f"><label>Player</label><input id="ePlayer" value="${esc(c.player || '')}"></div>` : ''}
           <div class="f"><label>Creature</label><select id="eKind">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-          ${mode !== 'pc' ? `<div class="f"><label>Side</label><select id="eSide"><option value="npc" ${c.side === 'npc' ? 'selected' : ''}>Antagonist (NPC)</option><option value="pc" ${c.side === 'pc' ? 'selected' : ''}>Player / ally</option></select></div>` : ''}
+          ${mode !== 'pc' ? `<div class="f"><label>Controlled by</label><select id="eSide"><option value="npc" ${c.side === 'npc' ? 'selected' : ''}>Storyteller (NPC)</option><option value="pc" ${c.side === 'pc' ? 'selected' : ''}>Player (PC)</option></select></div>` : ''}
+          ${mode === 'pc' ? '' : `<div class="f"><label>Allegiance</label><select id="eAlleg"><option value="enemy" ${allegianceOf(c) === 'enemy' ? 'selected' : ''}>Enemy</option><option value="ally" ${allegianceOf(c) === 'ally' ? 'selected' : ''}>Ally</option></select></div>`}
           <div class="f"><label>Humanity / Path</label><input id="eHum" value="${esc(c.humanity)}"></div>
+          <div class="f" style="grid-column: span 2"><label>Portrait (path, URL or upload)</label>
+            <div class="row" style="flex-wrap:nowrap"><img id="ePortraitPrev" class="portrait-prev ${c.portrait ? '' : 'hidden'}" src="${esc(c.portrait || '')}" alt="">
+              <input id="ePortrait" class="grow" placeholder="images/vamp.jpg" value="${esc(c.portrait && !c.portrait.startsWith('data:') ? c.portrait : '')}" data-full="${esc(c.portrait || '')}">
+              <button class="btn sm" id="ePortraitUp" type="button" title="Choose a picture from this computer (stored as a small thumbnail)">Upload…</button>
+              <button class="btn sm ghost" id="ePortraitClr" type="button" title="Remove the portrait">✕</button>
+              <input type="file" id="ePortraitFile" accept="image/*" class="hidden"></div></div>
           <div class="f"><label>Generation</label><input id="eGen" value="${esc(c.gen || '')}" placeholder="e.g. 12"></div>
         </div>
       </div>
@@ -1023,7 +1046,7 @@ function openEditor({ combatant, template, mode, onSave, focus }) {
       <div class="f"><label>Notes</label><textarea id="eNotes" rows="2">${esc(c.notes)}</textarea></div>
     </div>
     <div class="modal-foot">
-      ${mode === 'combat' || mode === 'new' ? '<label class="check" style="margin-right:auto"><input type="checkbox" id="eSavePreset"> Save to My Antagonists</label>' : ''}
+      ${mode === 'combat' || mode === 'new' ? '<label class="check" style="margin-right:auto"><input type="checkbox" id="eSavePreset"> Save to My Enemies</label>' : ''}
       <button class="btn" data-x>Cancel</button>
       <button class="btn primary" id="eSave">Save</button>
     </div>`, { wide: true });
@@ -1049,12 +1072,36 @@ function openEditor({ combatant, template, mode, onSave, focus }) {
   $('#eNewWeaponBtn', m).onclick = () => openWeaponForm(null, w => {
     $('#eAddWeapon', m).innerHTML = weaponOptions(); $('#eAddWeapon', m).value = w.id;
   }, true);
+  // Portrait: typed path/URL, or an uploaded picture cropped to a 3:4 thumbnail (face area) so localStorage stays small.
+  const pIn = $('#ePortrait', m), pPrev = $('#ePortraitPrev', m);
+  const setPortrait = v => { pIn.dataset.full = v; pPrev.src = v; pPrev.classList.toggle('hidden', !v); };
+  if (pIn.dataset.full.startsWith('data:')) pIn.placeholder = 'uploaded picture (type a path to replace it)';
+  pIn.addEventListener('change', () => setPortrait(pIn.value.trim()));
+  $('#ePortraitClr', m).onclick = () => { pIn.value = ''; pIn.placeholder = 'images/vamp.jpg'; setPortrait(''); };
+  $('#ePortraitUp', m).onclick = () => $('#ePortraitFile', m).click();
+  $('#ePortraitFile', m).onchange = e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const W = 180, H = 240, canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const scale = Math.max(W / img.width, H / img.height);
+      const sw = W / scale, sh = H / scale;
+      const sx = (img.width - sw) / 2, sy = Math.max(0, (img.height - sh) * 0.25); // keep the upper part: faces
+      canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+      pIn.value = ''; pIn.placeholder = 'uploaded picture (type a path to replace it)';
+      setPortrait(canvas.toDataURL('image/jpeg', 0.82));
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+  };
   if (focus === 'weapons') setTimeout(() => $('#eWeaponsSet', m).scrollIntoView({ behavior: 'smooth', block: 'center' }), 30);
 
   $('#eSave', m).onclick = () => {
     c.name = $('#eName', m).value.trim() || 'Unnamed';
     c.kind = $('#eKind', m).value;
     if ($('#eSide', m)) c.side = $('#eSide', m).value;
+    if ($('#eAlleg', m)) c.allegiance = $('#eAlleg', m).value;
     if ($('#ePlayer', m)) c.player = $('#ePlayer', m).value.trim();
     c.humanity = $('#eHum', m).value.trim();
     c.gen = $('#eGen', m).value.trim() || null;
@@ -1077,10 +1124,11 @@ function openEditor({ combatant, template, mode, onSave, focus }) {
     while (c.dmg.a + c.dmg.l + c.dmg.b > len) { if (c.dmg.b) c.dmg.b--; else if (c.dmg.l) c.dmg.l--; else c.dmg.a--; }
     c.regen = $('#eRegen', m).checked;
     c.notes = $('#eNotes', m).value.trim();
+    c.portrait = pIn.value.trim() || pIn.dataset.full || '';
     if ($('#eSavePreset', m)?.checked) {
       const t = toTemplate(c); t.id = 'my_' + uid(); t.side = 'npc';
       customPresets.push(t); save(STORE.presets, customPresets);
-      toast(`Saved "${c.name}" to My Antagonists`);
+      toast(`Saved "${c.name}" to My Enemies`);
     }
     closeModal();
     onSave(c);
@@ -1276,7 +1324,7 @@ function openAttack(attackerId, weaponIdx) {
   const targets = combat.combatants.filter(c => c.id !== a.id && inFight(c));
   const prevTarget = atk?.attackerId === a.id ? atk.targetId : null;
   const defaultTarget = (prevTarget && byId(prevTarget)) ? prevTarget
-    : (targets.find(t => t.side !== a.side && !isOut(t)) || targets[0])?.id || null;
+    : (targets.find(t => allegianceOf(t) !== allegianceOf(a) && !isOut(t)) || targets[0])?.id || null;
   atk = {
     attackerId: a.id, weaponIdx: weaponIdx ?? -1, maneuverId: null, targetId: defaultTarget,
     range: 'short', targeting: 'none', cover: 0, flank: 0, multiOpp: 0, actions: 1, actionNo: 1,
@@ -1421,14 +1469,14 @@ function renderAttack() {
 
   // Targets: the other side first; "show all" adds same-side combatants.
   const others = combat.combatants.filter(c => c.id !== a.id && inFight(c));
-  const opposing = others.filter(c => c.side !== a.side);
+  const opposing = others.filter(c => allegianceOf(c) !== allegianceOf(a));
   const shown = atk.showAll || !opposing.length ? others : opposing;
   const targetChips = shown.map(x => {
     const xw = woundInfo(x);
     const st = x.state !== 'active' ? x.state : xw.incap ? 'incap.' : xw.total ? xw.label : '';
     // Side is only worth showing when allies are listed too.
-    const side = atk.showAll && opposing.length ? `${x.side === 'pc' ? 'PC' : 'NPC'} · ` : '';
-    return `<button class="tchip ${x.id === atk.targetId ? 'on' : ''} ${isOut(x) ? 'out' : ''}" data-set="targetId" data-v="${x.id}">
+    const side = atk.showAll && opposing.length ? `${allegianceLabel(x)} · ` : '';
+    return `<button class="tchip ${allegianceOf(x)} ${x.id === atk.targetId ? 'on' : ''} ${isOut(x) ? 'out' : ''}" data-set="targetId" data-v="${x.id}">
       <b>${esc(x.name)}</b><small>${side}${KINDS[x.kind].label}${st ? ` · <span class="hurt">${esc(st)}</span>` : ''}</small></button>`;
   }).join('');
 
@@ -1665,84 +1713,12 @@ $('#modalRoot').addEventListener('change', e => {
   setAtk(el.dataset.k, v);
 });
 
-/* ---------- Share / encounter link ---------- */
-function b64urlEncode(str) {
-  const bytes = new TextEncoder().encode(str);
-  let bin = ''; bytes.forEach(b => (bin += String.fromCharCode(b)));
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+/* ---------- Encounter links (loading) ---------- */
 function b64urlDecode(s) {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
   const bin = atob(s);
   return new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0)));
-}
-
-function buildPayload({ includePCs = true, includeState = false } = {}) {
-  const payload = { v: 1, name: combat.name || undefined, notes: (combat.notes || '').trim() || undefined };
-  const entries = [];
-  const usedCustomWeapons = new Set();
-  combat.combatants.forEach(c => {
-    c.weapons.forEach(w => { if (customWeapons.find(x => x.id === w.wid)) usedCustomWeapons.add(w.wid); });
-    if (c.pcId || (c.side === 'pc' && pcs.find(p => p.name === c.name))) {
-      if (!includePCs) return;
-      const e = { pc: c.name };
-      // Loadout changed during the fight? Carry it, so the link doesn't revert to the saved player.
-      const saved = pcs.find(p => p.id === c.pcId || p.name === c.name);
-      const base = saved ? pcToCombatant(saved) : null;
-      if (!base || c.weapons.map(w => w.wid).join() !== base.weapons.map(w => w.wid).join()) e.weapons = c.weapons.map(w => w.wid);
-      if (!base || c.armor !== base.armor) e.armor = c.armor;
-      if (includeState) addState(e, c);
-      if (c.inactive) e.inactive = true;
-      return entries.push(e);
-    }
-    const p = c.presetId && getPreset(c.presetId);
-    if (p) {
-      const base = makeCombatant(presetTemplate(p));
-      const e = { preset: p.id };
-      const nameBase = c.name.replace(/ \d+$/, '');
-      if (nameBase !== p.name) e.name = c.name;
-      if (c.side !== 'npc') e.side = c.side;
-      if (c.kind !== base.kind) e.kind = c.kind;
-      const ad = {}; ATTR_KEYS.forEach(k => { if (c.attrs[k] !== base.attrs[k]) ad[k] = c.attrs[k]; });
-      if (Object.keys(ad).length) e.attrs = { ...base.attrs, ...ad };
-      if (traitsToString(c.abil) !== traitsToString(base.abil)) e.abil = traitsToString(c.abil);
-      if (traitsToString(c.disc) !== traitsToString(base.disc)) e.disc = traitsToString(c.disc);
-      if (c.wp.max !== base.wp.max) e.wp = c.wp.max;
-      if (c.bp.max !== base.bp.max) e.bp = c.bp.max;
-      if (c.armor !== base.armor) e.armor = c.armor;
-      if (c.health !== base.health) e.health = c.health;
-      const wids = c.weapons.map(w => w.wid);
-      if (wids.join() !== base.weapons.map(w => w.wid).join()) e.weapons = wids;
-      if (c.favored?.length) e.favored = [...c.favored];
-      if (c.notes !== base.notes) e.notes = c.notes;
-      if (includeState) addState(e, c);
-      if (e.attrs) e.attrs = ATTR_KEYS.map(k => e.attrs[k]);
-      if (c.inactive) e.inactive = true;
-      return entries.push(e);
-    }
-    const e = { custom: toTemplate(c) };
-    if (includeState) addState(e.custom, c);
-    if (c.inactive) e.inactive = true;
-    entries.push(e);
-  });
-  // Merge consecutive identical preset entries into a count.
-  const merged = [];
-  entries.forEach(e => {
-    const last = merged[merged.length - 1];
-    if (last && e.preset && last.preset) {
-      const { count, ...rest } = last;
-      if (JSON.stringify(rest) === JSON.stringify(e)) { last.count = (count || 1) + 1; return; }
-    }
-    merged.push(e);
-  });
-  payload.combatants = merged;
-  if (usedCustomWeapons.size) payload.weapons = customWeapons.filter(w => usedCustomWeapons.has(w.id));
-  return JSON.parse(JSON.stringify(payload));
-}
-function payloadToUrl(payload) {
-  const base = location.href.split('#')[0].split('?')[0];
-  return `${base}#encounter=${b64urlEncode(JSON.stringify(payload))}`;
 }
 
 function loadPayload(payload) {
@@ -1777,6 +1753,7 @@ function loadPayload(payload) {
             c = pcToCombatant(p);
             if (e.weapons) c.weapons = makeCombatant({ weapons: e.weapons }).weapons;
             if (e.armor !== undefined) c.armor = clamp(num(e.armor), 0, 5);
+            if (typeof e.portrait === 'string') c.portrait = e.portrait;
           }
           else if (e.attrs || e.custom) c = makeCombatant({ ...(e.custom || e), name: e.pc, side: 'pc' }, 'pc');
           else { if (i === 0) missing.push(e.pc); continue; }
@@ -1784,7 +1761,7 @@ function loadPayload(payload) {
           const p = getPreset(e.preset);
           if (!p) { if (i === 0) missing.push(e.preset); continue; }
           const t = presetTemplate(p);
-          ['name', 'side', 'kind', 'abil', 'disc', 'armor', 'health', 'weapons', 'notes', 'regen', 'extra', 'gen', 'humanity'].forEach(f => { if (e[f] !== undefined) t[f] = e[f]; });
+          ['name', 'side', 'kind', 'abil', 'disc', 'armor', 'health', 'weapons', 'notes', 'regen', 'extra', 'gen', 'humanity', 'portrait'].forEach(f => { if (e[f] !== undefined) t[f] = e[f]; });
           const extraFav = (e.favored || []).filter(id => getWeapon(id));
           // A full array replaces the attributes; an object like {"dex": 4} only changes those named.
           if (e.attrs) t.attrs = Array.isArray(e.attrs) ? e.attrs : { ...attrsFrom(p.a || p.attrs), ...e.attrs };
@@ -1798,6 +1775,7 @@ function loadPayload(payload) {
         }
         if (!c) continue;
         if (e.inactive) c.inactive = true; // starts in the Inactive section, joins later
+        if (e.allegiance === 'ally' || e.allegiance === 'enemy') c.allegiance = e.allegiance;
         applyState(c, e.custom ? { ...e.custom, ...e } : e);
         addCombatant(c);
       }
@@ -1812,67 +1790,6 @@ function loadPayload(payload) {
   if (missing.length) toast(`Not found: ${missing.join(', ')}`, 6000);
   commit();
   return missing;
-}
-
-function openShare() {
-  const m = openModal(`
-    <div class="modal-head"><h2>Encounter link</h2><button class="btn ghost right" data-x>✕</button></div>
-    <div class="modal-body">
-      <p class="small muted" style="margin-top:0">Opening this link starts the encounter in the tracker. Players are referenced by name and pulled from the opener's saved players.</p>
-      <div class="row">
-        <label class="check"><input type="checkbox" id="shPCs" checked> Include players (by name)</label>
-        <label class="check"><input type="checkbox" id="shState"> Include current damage / Willpower / blood</label>
-      </div>
-      <div class="f" style="margin-top:10px"><label>Link</label><textarea id="shUrl" class="code" rows="3" readonly style="min-height:70px"></textarea></div>
-      <div class="row" style="margin-top:6px"><button class="btn primary" id="shCopy">Copy link</button><a class="btn" id="shOpen" target="_blank" rel="noopener">Open in new tab</a></div>
-      <div class="f" style="margin-top:14px"><label>Payload (JSON) — edit and rebuild to hand-craft an encounter</label><textarea id="shJson" class="code" rows="12"></textarea></div>
-      <div class="row" style="margin-top:6px"><button class="btn" id="shBuild">Build link from JSON</button><button class="btn" id="shLoad">Load JSON into tracker</button></div>
-      <details style="margin-top:12px"><summary class="muted">Payload format & IDs</summary>
-        <div class="small muted" style="margin-top:6px">
-          <p>URL format: <code>index.html#encounter=&lt;base64url(JSON)&gt;</code>. Plain URL-encoded JSON also works: <code>#encounter={"combatants":[…]}</code>.</p>
-          <pre class="code" style="white-space:pre-wrap">{
-  "v": 1,
-  "name": "Warehouse ambush",
-  "pcs": true,                         // all saved players, or ["Anna", "Mikkel"]
-  "combatants": [
-    { "preset": "inquisitor", "count": 2 },
-    { "preset": "gov_agent", "name": "Agent Smith",
-      "weapons": ["shotgun", "knife"], "armor": 3 },
-    { "preset": "were_vet", "dmg": { "b": 0, "l": 2, "a": 0 } },
-    { "pc": "Anna" },
-    { "custom": { "name": "Lasombra Elder", "kind": "vampire",
-        "attrs": [4,4,4,3,4,3,3,3,4], "abil": "Brawl 4, Dodge 3, Melee 3",
-        "disc": "Fortitude 3, Potence 2, Obtenebration 4",
-        "wp": 8, "bp": 20, "weapons": ["sword"] } }
-  ]
-}</pre>
-          <p><b>attrs</b> order: Str, Dex, Sta, Cha, Man, App, Per, Int, Wits. <b>kind</b>: ${Object.keys(KINDS).join(', ')}. <b>health</b>: standard, extra, or e.g. "OK,-1,-2,-5,Inc".</p>
-          <p><b>Preset IDs:</b> ${allPresets().map(p => `<code>${esc(p.id)}</code>`).join(' ')}</p>
-          <p><b>Weapon IDs:</b> ${allWeapons().map(w => `<code>${esc(w.id)}</code>`).join(' ')}</p>
-        </div></details>
-    </div>
-    <div class="modal-foot"><button class="btn" data-x>Close</button></div>`, { wide: true });
-  const rebuild = () => {
-    const p = buildPayload({ includePCs: $('#shPCs', m).checked, includeState: $('#shState', m).checked });
-    $('#shJson', m).value = JSON.stringify(p, null, 2);
-    setUrl(p);
-  };
-  const setUrl = p => { const url = payloadToUrl(p); $('#shUrl', m).value = url; $('#shOpen', m).href = url; };
-  rebuild();
-  m.addEventListener('click', e => { if (e.target.closest('[data-x]')) closeModal(); });
-  $('#shPCs', m).onchange = rebuild;
-  $('#shState', m).onchange = rebuild;
-  $('#shCopy', m).onclick = async () => {
-    try { await navigator.clipboard.writeText($('#shUrl', m).value); toast('Link copied'); }
-    catch { $('#shUrl', m).select(); document.execCommand('copy'); toast('Link copied'); }
-  };
-  const parse = () => { try { return JSON.parse($('#shJson', m).value); } catch (err) { toast('Invalid JSON: ' + err.message); return null; } };
-  $('#shBuild', m).onclick = () => { const p = parse(); if (p) { setUrl(p); toast('Link rebuilt'); } };
-  $('#shLoad', m).onclick = async () => {
-    const p = parse(); if (!p) return;
-    if (combat.combatants.length && !(await ask('Replace the current combat with this encounter?', { ok: 'Replace' }))) return;
-    try { loadPayload(p); closeModal(); } catch (err) { toast('Could not load: ' + err.message); }
-  };
 }
 
 async function checkUrlPayload() {
@@ -1923,7 +1840,7 @@ function openNotes(editing = !(combat.notes || '').trim()) {
     <div class="modal-body notes-body">
       ${editing
         ? `<textarea id="nText" class="notes-text" placeholder="Location, combatants, special circumstances, special rules…&#10;&#10;# Headings, - bullets, **bold** and *italic* are shown formatted when reading.">${esc(combat.notes || '')}</textarea>
-           <div class="small faint" style="margin-top:6px">Saved as you type. Included in encounter links.</div>`
+           <div class="small faint" style="margin-top:6px">Saved as you type.</div>`
         : `<div class="notes-view">${notesHTML(combat.notes)}</div>`}
     </div>
     <div class="modal-foot">${editing ? '<button class="btn primary" id="nDone">Done</button>' : '<button class="btn" data-x>Close</button>'}</div>`, { cls: 'notes' });
@@ -1956,11 +1873,31 @@ const SETTING_DEFS = [
   { key: 'autoSoak', group: 'Tracker', label: 'Quick damage buttons roll soak',
     desc: "The +B / +L / +A buttons on the cards roll the target's soak first (undead halve bashing) instead of applying the level directly." },
 ];
+function themePickerHTML() {
+  const t = THEMES.find(x => x.id === settings.theme) || THEMES[0];
+  return `<div class="fieldset"><div class="legend">Appearance</div>
+    <div class="theme-row"><div class="theme-picker">
+      <button class="btn" data-theme-step="-1" title="Previous theme">◀</button>
+      <div class="tname"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></div>
+      <button class="btn" data-theme-step="1" title="Next theme">▶</button>
+      <span class="small faint">${THEMES.indexOf(t) + 1} / ${THEMES.length}</span>
+    </div>
+    <div class="theme-swatches">${THEMES.map(x => `<button class="theme-swatch ${x.id === t.id ? 'on' : ''}" data-theme-id="${x.id}" title="${esc(x.name)} — ${esc(x.desc)}">${x.sw.map(c => `<span style="background:${c}"></span>`).join('')}</button>`).join('')}</div></div>
+  </div>`;
+}
+function setTheme(id) {
+  settings.theme = id;
+  save(STORE.settings, settings);
+  applyTheme();
+  const picker = $('#themePicker');
+  if (picker) picker.innerHTML = themePickerHTML();
+}
 function openSettings() {
   const groups = [...new Set(SETTING_DEFS.map(d => d.group))];
   const m = openModal(`
     <div class="modal-head"><h2>Settings</h2><button class="btn ghost right" data-x>✕</button></div>
     <div class="modal-body settings">
+      <div id="themePicker">${themePickerHTML()}</div>
       ${groups.map(g => `<div class="fieldset"><div class="legend">${esc(g)}</div>
         ${SETTING_DEFS.filter(d => d.group === g).map(d => `
           <label class="setting">
@@ -1969,10 +1906,19 @@ function openSettings() {
             <span class="txt"><b>${esc(d.label)}</b><small>${esc(d.desc)}</small></span>
           </label>`).join('')}
       </div>`).join('')}
-      <p class="small faint">Settings are saved in this browser and apply to every combat.</p>
+      <p class="small faint" style="margin:4px 0 0">Settings are saved in this browser and apply to every combat.</p>
     </div>
-    <div class="modal-foot"><button class="btn" data-x>Close</button></div>`);
-  m.addEventListener('click', e => { if (e.target.closest('[data-x]')) closeModal(); });
+    <div class="modal-foot"><button class="btn" data-x>Close</button></div>`, { cls: 'settings-dlg' });
+  m.addEventListener('click', e => {
+    if (e.target.closest('[data-x]')) return closeModal();
+    const step = e.target.closest('[data-theme-step]');
+    if (step) {
+      const i = Math.max(0, THEMES.findIndex(x => x.id === settings.theme));
+      return setTheme(THEMES[(i + num(step.dataset.themeStep) + THEMES.length) % THEMES.length].id);
+    }
+    const pick = e.target.closest('[data-theme-id]');
+    if (pick) setTheme(pick.dataset.themeId);
+  });
   m.addEventListener('change', e => {
     const key = e.target.dataset.setting; if (!key) return;
     const def = SETTING_DEFS.find(d => d.key === key);
@@ -2093,7 +2039,7 @@ document.addEventListener('click', e => {
       return commit();
     }
     case 'delpreset':
-      return ask('Delete this saved antagonist?', { ok: 'Delete', danger: true }).then(yes => {
+      return ask('Delete this saved enemy?', { ok: 'Delete', danger: true }).then(yes => {
         if (!yes) return;
         customPresets = customPresets.filter(p => p.id !== el.dataset.p); save(STORE.presets, customPresets);
         render();
@@ -2107,7 +2053,7 @@ document.addEventListener('click', e => {
       return commit();
     case 'players': return openPlayers();
     case 'newcustom':
-      return openEditor({ mode: 'new', template: { name: el.dataset.side === 'pc' ? 'Ally' : 'Antagonist', side: el.dataset.side, kind: el.dataset.side === 'pc' ? 'vampire' : 'mortal', wp: 5, bp: el.dataset.side === 'pc' ? 10 : 0, attrs: [2, 2, 2, 2, 2, 2, 2, 2, 2], abil: 'Brawl 2, Dodge 2, Melee 2, Firearms 2, Alertness 2' }, onSave: nc => { addCombatant(nc); commit(); } });
+      return openEditor({ mode: 'new', template: { name: el.dataset.side === 'pc' ? 'Ally' : 'Enemy', side: el.dataset.side, kind: el.dataset.side === 'pc' ? 'vampire' : 'mortal', wp: 5, bp: el.dataset.side === 'pc' ? 10 : 0, attrs: [2, 2, 2, 2, 2, 2, 2, 2, 2], abil: 'Brawl 2, Dodge 2, Melee 2, Firearms 2, Alertness 2' }, onSave: nc => { addCombatant(nc); commit(); } });
     case 'quickextra': {
       const init = num($('#qxInit').value, 4), pool = num($('#qxPool').value, 5), soak = num($('#qxSoak').value, 2);
       const wid = $('#qxWeapon').value; const w = getWeapon(wid);
@@ -2139,6 +2085,12 @@ document.addEventListener('click', e => {
         commit();
       });
     case 'expand': c.expanded = !c.expanded; return commit();
+    case 'portrait': {
+      const m = openModal(`<div class="modal-head"><h2>${esc(c.name)}</h2><span class="muted small">${esc(descriptor(c))}</span><button class="btn ghost right" data-x>✕</button></div>
+        <div class="modal-body portrait-view"><img src="${esc(c.portrait)}" alt="${esc(c.name)}"></div>`, { cls: 'portrait-dlg' });
+      m.addEventListener('click', e => { if (e.target.closest('[data-x]') || e.target.tagName === 'IMG') closeModal(); });
+      return;
+    }
     case 'bench': {
       keepCursor(() => { c.inactive = !c.inactive; c.st.delayed = false; });
       if (c.inactive) log(`${esc(c.name)} leaves the fight (inactive).`);
@@ -2243,6 +2195,14 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.id === 'addQty') { settings.addQty = clamp(num(el.value, 1), 1, 20); save(STORE.settings, settings); }
   if (el.dataset.field === 'inittotal') { commitInitInput(el); return; }
+  if (el.dataset.field === 'allegiance') {
+    const c = byId(el.dataset.id); if (!c) return;
+    c.allegiance = el.value;
+    log(`<b>${esc(c.name)}</b> ${el.value === 'ally' ? 'now fights alongside the coterie (Ally)' : 'turns against the coterie (Enemy)'}.`);
+    toast(`${c.name} is now ${el.value === 'ally' ? 'an Ally' : 'an Enemy'}.`);
+    commit();
+    return;
+  }
   if (el.dataset.field === 'armor') {
     const c = byId(el.dataset.id); if (!c) return;
     c.armor = clamp(num(el.value), 0, 5);
@@ -2316,8 +2276,6 @@ $('#btnRollInit').onclick = () => {
 $('#btnNext').onclick = next;
 $('#btnPrev').onclick = prev;
 $('#btnNewRound').onclick = () => { if (!combat.combatants.length) return; newTurn(); commit(); };
-$('#btnShare').onclick = openShare;
-$('#btnPlayers').onclick = openPlayers;
 $('#btnWeapons').onclick = openWeapons;
 $('#btnRules').onclick = openRules;
 $('#btnSettings').onclick = openSettings;
@@ -2340,10 +2298,43 @@ window.addEventListener('storage', e => {
     else if (e.key === STORE.pcs) pcs = JSON.parse(e.newValue);
     else if (e.key === STORE.weapons) customWeapons = JSON.parse(e.newValue);
     else if (e.key === STORE.presets) customPresets = JSON.parse(e.newValue);
-    else if (e.key === STORE.settings) Object.assign(settings, JSON.parse(e.newValue));
+    else if (e.key === STORE.settings) { Object.assign(settings, JSON.parse(e.newValue)); applyTheme(); }
     else return;
   } catch { return; }
   render();
+});
+
+/* Card sizes by clicking empty space on a card (anything that isn't a button, field, chip or dot):
+ *   collapsed → click: normal · normal → click: collapsed · full → click: normal · double-click anywhere: full.
+ * A single click waits a moment so a double-click can take over instead. */
+const isCardControl = el => !!el.closest('button, a, input, select, textarea, label, [data-act]');
+let cardClickTimer = null;
+function resizeCard(id, mode) {
+  const c = byId(id); if (!c) return;
+  if (mode === 'full') { c.collapsed = false; c.expanded = true; }
+  else if (c.collapsed) c.collapsed = false;
+  else if (c.expanded) c.expanded = false;
+  else c.collapsed = true;
+  commit();
+}
+document.addEventListener('click', e => {
+  const card = e.target.closest('#combatList article.card');
+  if (!card || isCardControl(e.target)) return;
+  clearTimeout(cardClickTimer);
+  if (e.detail > 1) return; // second click of a double-click: the dblclick handler decides
+  const id = card.dataset.id;
+  cardClickTimer = setTimeout(() => resizeCard(id, 'step'), 220);
+});
+document.addEventListener('dblclick', e => {
+  const card = e.target.closest('#combatList article.card');
+  if (!card || isCardControl(e.target)) return;
+  clearTimeout(cardClickTimer);
+  window.getSelection()?.removeAllRanges();
+  resizeCard(card.dataset.id, 'full');
+});
+// Don't select text when double-clicking a card.
+document.addEventListener('mousedown', e => {
+  if (e.detail > 1 && e.target.closest('#combatList article.card') && !isCardControl(e.target)) e.preventDefault();
 });
 
 // Keyboard: N = next, P = previous (when not typing)

@@ -15,7 +15,7 @@ All data (players, settings, custom weapons, the current combat) is kept in the 
 2. [Combatant cards](#combatant-cards)
 3. [The attack dialog](#the-attack-dialog)
 4. [Settings and house rules](#settings-and-house-rules)
-5. [Side panel: antagonists, players, custom, dice, log](#side-panel)
+5. [Side panel: enemies, players, custom, dice, log](#side-panel)
 6. [Weapons and armor](#weapons-and-armor)
 7. [Encounter links (payload reference)](#encounter-links)
 8. [Preset antagonists](#preset-antagonists)
@@ -27,7 +27,7 @@ All data (players, settings, custom weapons, the current combat) is kept in the 
 
 ## Running a fight
 
-1. **Add combatants.** Use the side panel to add preset antagonists (choose the quantity with **×N**), your saved players (**Add all players**), or a custom combatant.
+1. **Add combatants.** Use the side panel's **Enemies** tab to add preset enemies (choose the quantity with **×N**), your saved players (**Add all players**), or a custom combatant.
 2. **Initiative.** Initiative is 1d10 + Dexterity + Wits − wound penalty.
    - **Roll NPC initiative** rolls every NPC.
    - Players roll their own dice. Type each player's **total** into the blue box on their card and press **Enter**; the cursor jumps to the next player who is still waiting.
@@ -46,7 +46,7 @@ All data (players, settings, custom weapons, the current combat) is kept in the 
 6. **📝 Notes** (next to the encounter name) opens the combat notes: location, who's who, special circumstances and rules for this fight. A new encounter starts with empty notes you can type into (saved as you type); an encounter link can fill them in. When there are notes they open formatted for reading; **✎ Edit** switches back to editing. A gold dot on the button means the encounter has notes.
 7. **Reset combat** keeps everyone but restores health, Willpower, blood, ammo, statuses and initiative, and sets the turn counter back to 1. **End combat** removes everyone.
 
-The header status line always shows what is happening ("▶ Inquisitor acts (15)"); hover it for the full explanation.
+The header holds the turn controls on the left (**Roll NPC initiative**, ◀, **Next ▶**, **New turn**, **Reset combat**, **End combat**) and ⚔ weapons, 📖 rules and **⚙ Settings** on the right. Its status line always shows what is happening ("▶ Inquisitor acts (15)"); hover it for the full explanation.
 
 ## Combatant cards
 
@@ -54,11 +54,13 @@ Each card has three groups:
 
 | Left | Middle | Right |
 |---|---|---|
-| Name and descriptor (`NPC · Vampire · Thin-Blood Singer`) | Willpower and Blood (or another pool such as Gnosis) | Buttons: Delay/Act now, ⏸/▶ deactivate/activate, ✎ edit, ⧉ duplicate, ▾ details, − collapse, ✕ remove |
+| Name and descriptor (`NPC · Enemy · Vampire · Thin-Blood Singer`) | Willpower and Blood (or another pool such as Gnosis) | Buttons: Delay/Act now, ⏸/▶ deactivate/activate, ✎ edit, ⧉ duplicate, ▾ details, − collapse, ✕ remove |
 | Health boxes and current state | Equipment columns: **Unarmed · Melee · Ranged · Armor** | Stat block: attributes, combat Abilities, soak (armor included) and combat Disciplines |
 | **+B +L +A** (damage), **−B −L −A** (heal), **Mend** (1 blood heals 1 normal level), **Mend A** (5 blood heals 1 aggravated level) | | |
 
-- **The descriptor** shows the preset name when you rename a preset-based combatant, for example `Vampy McVamperson — NPC · Vampire · Thin-Blood Singer`.
+- **The descriptor** shows who controls the combatant (PC/NPC), their **allegiance** (Ally/Enemy), the creature kind, and the preset name when a preset-based combatant has been renamed: `Vampy McVamperson — NPC · Enemy · Vampire · Thin-Blood Singer`.
+- **Allegiance and turncoats:** players start as **Ally** and NPCs as **Enemy**. Click the descriptor to switch either way at any time. The card's border and descriptor show the side in every theme: **blue** = player ally, **green** = NPC ally, **red** = NPC enemy, **magenta** = player turned enemy. The active character glows in its own side colour. The attack dialog offers the other allegiance as targets, so a turncoat can be attacked by former friends and attack them back.
+- **Portrait:** set one in the editor (✎) with a path or web address (for example `images/vamp.jpg`, an image in the site's `images` folder) or **Upload…** a picture from your computer. Uploads are cropped and shrunk to a small thumbnail so saved data stays small. The portrait sits under the initiative box on full cards; expanding the card (▾) shows a tall version beside the full stats instead. Collapsed cards show a small thumbnail before the name. Click any of them to see it large.
 - **Health marks:** ╱ bashing, ✕ lethal, ✱ aggravated. Aggravated damage is always marked above normal damage. Going past Incapacitated means torpor or Final Death for vampires, and death for everyone else.
 - **Willpower and Blood:** click a dot to set the value, or use − / +. **Ignore wounds** spends 1 Willpower to ignore wound penalties for a turn. **⚡ Celerity** spends 1 blood for extra actions next turn; werewolves get **⚡ +N actions** instead, which cost no blood.
 - **Equipment:** click a weapon to attack with it.
@@ -67,7 +69,8 @@ Each card has three groups:
   - Ranged weapons show their ammo and a **↻** reload button.
   - The armor box's **▾** changes armor.
 - **Details (▾):** shows all Attributes, Abilities and Disciplines, notes, every status toggle, blood boosts to Physical Attributes, and the torpor/dead controls.
-- **Collapse (−):** shrinks the card to one 34px line showing initiative, name and buttons. Clicking anywhere on a collapsed row opens it again.
+- **Collapse (−):** shrinks the card to one 34px line showing initiative, portrait thumbnail, name and buttons.
+- **Click to resize:** click any empty part of a card (not a button, field, chip or dot): a collapsed card opens to normal, a normal card collapses, and a fully expanded card goes back to normal. **Double-click** any card to open it fully (the same as ▾).
 - **Statuses:** delaying, full defense, knocked down (−2 initiative next turn), dazed, clinched/held, immobilized, blinded, staked, frenzy (ignores wound penalties), Willpower used to ignore wounds, and battle form (werewolves).
 
 ## The attack dialog
@@ -88,6 +91,8 @@ Click a weapon on a card to open the dialog. It fits a 1536×695 laptop screen w
 
 Open **⚙ Settings** in the header. A gold dot on the button means at least one house rule is on.
 
+**Appearance:** pick a theme with ◀ / ▶ or click a swatch. All themes are dark: *Camarilla* (crimson and gold, the default), *Tremere* (violet), *Ventrue* (sapphire and silver), *Nosferatu* (sewer moss), *Toreador* (rose), *Sabbat* (ember), *Giovanni* (grave teal) and *Obsidian* (near-black and steel). The damage colours (╱ bashing, ✕ lethal, ✱ aggravated) and blood-red blood pools stay the same in every theme.
+
 | Setting | Effect |
 |---|---|
 | **Keep initiative** (house rule) | Roll initiative once per combat. Each character keeps their die; wound penalties and knockdown still adjust the score every turn. |
@@ -97,8 +102,8 @@ Open **⚙ Settings** in the header. A gold dot on the button means at least one
 
 ## Side panel
 
-- **Antagonists:** every preset, grouped by category and searchable. **×N** sets how many are added per click. "My Antagonists" holds combatants you saved from the editor (tick *Save to My Antagonists*).
-- **Players:** your saved player characters. **Configure…** (or 👥 in the header) creates, edits, deletes, and exports or imports them as JSON.
+- **Enemies:** every preset, grouped by category and searchable. **×N** sets how many are added per click. "My Enemies" holds combatants you saved from the editor (tick *Save to My Enemies*). Once the fight has started, new enemies go to the Inactive section with a rolled score.
+- **Players:** your saved player characters. **Configure…** creates, edits, deletes, and exports or imports them as JSON.
 - **Custom:** a full editor for one-off combatants, plus a *quick extra* form (name, Dex + Wits, attack pool, soak, weapon, Extras health).
 - **Dice:** roll any pool against a difficulty, a single d10, or an Attribute + Ability roll for a combatant (with or without wound penalties).
 - **Log:** every roll, hit, heal and turn, newest first.
@@ -119,7 +124,7 @@ Open **⚙ Settings** in the header. A gold dot on the button means at least one
 
 ## Encounter links
 
-An encounter link opens the tracker with a fight already set up. The easiest way to make one is to build the fight and press **🔗 Share link**. The dialog shows the link and its JSON, which you can edit, rebuild and test. You can also write the JSON by hand using the reference below.
+An encounter link opens the tracker with a fight already set up. Write the JSON using the reference below and put it after `#encounter=` in the address.
 
 ### URL format
 
@@ -129,8 +134,8 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=<payload>
 
 `<payload>` is either:
 
-- the JSON encoded as **base64url** (UTF-8, `+`→`-`, `/`→`_`, no `=` padding), which is what Share link produces, or
-- the JSON itself, URL-encoded: `#encounter=%7B%22combatants%22%3A...`.
+- the JSON itself, URL-encoded: `#encounter=%7B%22combatants%22%3A...`. Most browsers accept the raw JSON pasted straight into the address bar and encode it for you, or
+- the JSON encoded as **base64url** (UTF-8, `+`→`-`, `/`→`_`, no `=` padding), which gives a shorter, tidier link.
 
 `?encounter=<payload>` in the query string works too. If a combat is already running, the tracker asks before replacing it. After loading, the payload is removed from the address bar.
 
@@ -153,7 +158,7 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=<payload>
 
 | Field | Type | Meaning |
 |---|---|---|
-| `preset` | ID | Required. See [Preset antagonists](#preset-antagonists). Your own saved antagonists ("My Antagonists") also work, but their IDs exist only in your browser. |
+| `preset` | ID | Required. See [Preset antagonists](#preset-antagonists). Your own saved enemies ("My Enemies") also work, but their IDs exist only in your browser. |
 | `count` | 1–50 | How many copies. They are numbered automatically ("Thin-Blood Singer 2" …). |
 | `inactive` | boolean | `true` starts them in the **Inactive** section as reinforcements, to be brought in with ▶ during the fight. Works on every entry type. |
 | `name` | string | Rename. The descriptor keeps the preset name: `NPC · Vampire · Thin-Blood Singer`. |
@@ -163,7 +168,8 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=<payload>
 | `attrs` | array or object | An array of nine numbers **replaces** all Attributes (order: Str, Dex, Sta, Cha, Man, App, Per, Int, Wits). An object such as `{ "dex": 4, "wit": 3 }` changes only those named. Keys: `str dex sta cha man app per int wit`. |
 | `abil`, `disc` | string or object | **Replaces** the Abilities / Disciplines: `"Brawl 3, Dodge 2"` or `{ "Brawl": 3 }`. |
 | `wp`, `bp` | number | Willpower / blood pool maximum. |
-| `kind`, `side`, `health`, `extra`, `gen`, `humanity`, `regen`, `notes` | | As in [custom entries](#custom-entries). |
+| `allegiance` | `"ally"` / `"enemy"` | Overrides the default (NPCs are enemies). Works on every entry type, so `{ "pc": "Anna", "allegiance": "enemy" }` starts a player on the other side. |
+| `kind`, `side`, `health`, `extra`, `gen`, `humanity`, `regen`, `notes`, `portrait` | | As in [custom entries](#custom-entries). |
 | state fields | | See [State fields](#state-fields). |
 
 ### Player entries
@@ -177,7 +183,8 @@ The name is matched, ignoring case, against the **opener's** saved players. A pl
 | Field | Meaning |
 |---|---|
 | `pc` | Required. The player's name. |
-| `weapons`, `armor` | Override the saved loadout (Share link adds these automatically when a player's equipment changed during the fight). |
+| `weapons`, `armor` | Override the player's saved loadout for this fight. |
+| `portrait` | Override the player's saved portrait. |
 | `inactive` | `true` starts the player in the Inactive section (for example, someone arriving late). |
 | state fields | See [State fields](#state-fields). |
 
@@ -194,7 +201,8 @@ A bare object with a `name` (without the `custom` wrapper) works too. Template f
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `name` | string | "Unnamed" | Name (numbered automatically when repeated). |
-| `side` | `"npc"` / `"pc"` | `"npc"` | NPC or player/ally. |
+| `side` | `"npc"` / `"pc"` | `"npc"` | Who controls it: Storyteller (NPC, rolled digitally) or player (PC, enters their own rolls). |
+| `allegiance` | `"ally"` / `"enemy"` | by side | Which side it fights on. Players default to ally, NPCs to enemy. |
 | `kind` | see [Creature kinds](#creature-kinds) | `"mortal"` | Decides soak, halving, torpor and so on. |
 | `attrs` | array of 9, or object | all 1 | Str, Dex, Sta, Cha, Man, App, Per, Int, Wits. Attributes you leave out are 1. |
 | `abil` | string or object | none | `"Alertness 2, Brawl 3, Dodge 2, Firearms 2, Melee 2"`. The tracker uses Alertness, Athletics, Brawl, Dodge, Firearms, Melee and Stealth for rolls; the rest is listed for reference. |
@@ -210,6 +218,7 @@ A bare object with a `name` (without the `custom` wrapper) works too. Template f
 | `favored` | array of IDs | the starting weapons | Weapons listed first in the swap dropdowns. |
 | `regen` | boolean | false | Regenerates one bashing or lethal level per turn (werewolves). |
 | `notes` | string | none | Shown in the card's details. |
+| `portrait` | string | none | Image path or web address, e.g. `"images/vamp.jpg"`. Uploaded pictures are stored as long `data:` strings; use paths or addresses in links instead. |
 
 ### State fields
 
@@ -224,7 +233,6 @@ Any entry can start part-way through a fight:
 | `weapons` | `[{ "id": "pistol_lt", "ammo": 3 }]` | Partly empty magazines. |
 | `state` | `"active"`, `"torpor"` or `"dead"` | Out-of-action states. |
 
-Share link writes these when you tick **Include current damage / Willpower / blood**.
 
 ### Errors
 
@@ -293,7 +301,7 @@ The two ex-military ghouls at the end start **inactive**: reinforcements that co
 https://endrejordal.github.io/vtm-combat-tracker/#encounter=eyJuYW1lIjoiVGhlIExhc3QgV2FsdHoiLCJwY3MiOnRydWUsImNvbWJhdGFudHMiOlt7InByZXNldCI6IndrX3NpbmdlciIsImNvdW50IjozfV19
 ```
 
-(That one is shortened: three Singers plus all players. Paste the full JSON into **🔗 Share link → Build link from JSON** to get the link for the complete raid.)
+(That one is shortened: three Singers plus all players. For the complete raid, paste the full JSON after `#encounter=`, or base64url-encode it, e.g. in a browser console: `btoa(unescape(encodeURIComponent(json))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')`.)
 
 ---
 
@@ -577,8 +585,8 @@ Every weapon by category. `core` = the rulebook's weapon charts, `homebrew` = ad
 
 ## Data, backups and development
 
-- **Storage keys** (`localStorage`): `vtm.pcs` (players), `vtm.combat` (current fight and log), `vtm.settings`, `vtm.customWeapons`, `vtm.customPresets` (My Antagonists). Data is per browser and per site address: the live site and a local copy don't share it.
-- **Backups:** export players with **Players → Export JSON**. A fight can be saved as an encounter link with *Include current damage / Willpower / blood* ticked.
+- **Storage keys** (`localStorage`): `vtm.pcs` (players), `vtm.combat` (current fight and log), `vtm.settings`, `vtm.customWeapons`, `vtm.customPresets` (My Enemies). Data is per browser and per site address: the live site and a local copy don't share it.
+- **Backups:** export players with **Players → Configure… → Export JSON**. A prepared fight can be kept as an encounter link (see above).
 - **Several tabs** of the tracker stay in sync automatically.
 - **Files:** `index.html`, `css/styles.css`, `js/data.js` (rules data: creature kinds, health charts, armor, weapons, maneuvers and presets), `js/app.js` (the app).
 - **Updating this README:** the preset, weapon and reference tables are generated from `js/data.js`. After changing the data, run:

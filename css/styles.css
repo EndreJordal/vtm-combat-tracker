@@ -15,16 +15,73 @@
   --bash: #e2b13c;
   --leth: #e0434f;
   --agg: #b768ff;
+  --vitae: #e0284a; /* blood pool dots: always blood red, whatever the theme */
+  /* Side colours (card border and descriptor pill), the same in every theme */
+  --c-pc-ally: #5aa3e0;    /* player on the coterie's side: blue */
+  --c-npc-ally: #3fbf8f;   /* NPC fighting with the coterie: green */
+  --c-npc-enemy: #d6334a;  /* NPC against the coterie: red */
+  --c-pc-enemy: #e04fbf;   /* player turned against the coterie: magenta */
   --ok: #4fb47a;
   --info: #5aa3e0;
   --radius: 8px;
   color-scheme: dark;
 }
 
+/* ---- Themes (all dark). Chosen in Settings; applied as <html data-theme="…">. Camarilla is the default above. */
+:root[data-theme="tremere"] {
+  --bg: #0c0b10; --bg-2: #14121b; --panel: #1a1723; --panel-2: #221e2d; --line: #332d42; --line-2: #473f5c;
+  --text: #e6e2ee; --muted: #9890a8; --faint: #686079; --blood: #7b3fd0; --blood-2: #9b5cf0; --blood-dim: #2c1748; --gold: #c9a24a;
+}
+:root[data-theme="ventrue"] {
+  --bg: #0a0c11; --bg-2: #11151d; --panel: #161b25; --panel-2: #1d2330; --line: #2b3345; --line-2: #3e4a63;
+  --text: #e2e7f0; --muted: #8d98ad; --faint: #5f6a80; --blood: #2f63c4; --blood-2: #4d86f0; --blood-dim: #13254a; --gold: #b8c2d4;
+}
+:root[data-theme="nosferatu"] {
+  --bg: #0a0d0b; --bg-2: #111612; --panel: #161c17; --panel-2: #1d251e; --line: #2c3a2e; --line-2: #3f5241;
+  --text: #dfe8e0; --muted: #8fa192; --faint: #627265; --blood: #3f7530; --blood-2: #6fb352; --blood-dim: #1b3014; --gold: #b9a35a;
+}
+:root[data-theme="toreador"] {
+  --bg: #0e0b0d; --bg-2: #171215; --panel: #1e171b; --panel-2: #271e23; --line: #3a2c33; --line-2: #523e48;
+  --text: #f0e4ea; --muted: #a8919c; --faint: #76626c; --blood: #c2457a; --blood-2: #e86a9e; --blood-dim: #4a1830; --gold: #d9b38c;
+}
+:root[data-theme="sabbat"] {
+  --bg: #0c0a08; --bg-2: #15110d; --panel: #1c1712; --panel-2: #251e17; --line: #3a2e22; --line-2: #524131;
+  --text: #eee4da; --muted: #a39382; --faint: #75675a; --blood: #c4501a; --blood-2: #f0712e; --blood-dim: #4a1f0a; --gold: #d6a64a;
+}
+:root[data-theme="giovanni"] {
+  --bg: #080b0c; --bg-2: #0f1416; --panel: #141b1d; --panel-2: #1b2427; --line: #29363a; --line-2: #3b4d52;
+  --text: #e0e8e8; --muted: #8b9d9f; --faint: #5d6e70; --blood: #177570; --blood-2: #36b5ae; --blood-dim: #0e3332; --gold: #d8cfb6;
+}
+:root[data-theme="obsidian"] {
+  --bg: #050505; --bg-2: #0d0d0e; --panel: #131314; --panel-2: #1a1a1c; --line: #2a2a2d; --line-2: #3d3d42;
+  --text: #ececee; --muted: #9a9aa2; --faint: #66666d; --blood: #a51c2e; --blood-2: #d6334a; --blood-dim: #3a0d14; --gold: #bdbdc4;
+}
+
+/* Theme picker in Settings */
+.theme-picker { display: flex; align-items: center; gap: 10px; }
+.theme-picker .tname { min-width: 150px; text-align: center; }
+.theme-picker .tname b { display: block; color: var(--text); font-size: 15px; }
+.theme-picker .tname small { color: var(--muted); font-size: 12px; }
+.theme-row { display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; }
+.theme-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Settings dialog fits a 1536×695 laptop screen */
+.modal-backdrop.settings-dlg { padding-top: 12px; padding-bottom: 12px; }
+.modal.settings-dlg { width: min(760px, 100%); margin-block: auto; }
+.modal.settings-dlg .modal-head { padding: 8px 14px; }
+.modal.settings-dlg .modal-body { padding: 10px 14px; }
+.modal.settings-dlg .modal-foot { padding: 8px 14px; }
+.modal.settings-dlg .fieldset { padding: 6px 10px; margin-bottom: 8px; }
+.modal.settings-dlg .fieldset > .legend { margin-bottom: 4px; }
+.settings .setting { padding: 5px 4px; }
+.settings .txt small { line-height: 1.35; }
+.theme-swatch { display: inline-flex; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; cursor: pointer; padding: 0; background: none; }
+.theme-swatch span { width: 14px; height: 22px; }
+.theme-swatch.on { outline: 2px solid var(--text); outline-offset: 1px; }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
-  background: radial-gradient(1200px 600px at 10% -10%, #2a0b13 0%, transparent 60%), var(--bg);
+  background: radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--blood) 20%, var(--bg)) 0%, transparent 60%), var(--bg);
   color: var(--text);
   font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
@@ -43,17 +100,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px;
   padding: 6px 10px; cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s;
 }
-.btn:hover { background: #2e2732; border-color: #66566c; }
+.btn:hover { background: color-mix(in srgb, var(--panel-2) 88%, var(--text)); border-color: color-mix(in srgb, var(--line-2) 70%, var(--text)); }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.primary { background: var(--blood); border-color: var(--blood-2); color: #fff; }
 .btn.primary:hover { background: var(--blood-2); }
-.btn.danger { border-color: #6d1b28; color: #ff8a9b; }
-.btn.danger:hover { background: #3a0f17; }
+.btn.danger { border-color: color-mix(in srgb, var(--blood) 55%, var(--bg-2)); color: #ff8a9b; }
+.btn.danger:hover { background: color-mix(in srgb, var(--blood) 25%, var(--bg-2)); }
 .btn.ghost { background: transparent; border-color: transparent; }
 .btn.ghost:hover { background: var(--panel-2); border-color: var(--line); }
 .btn.sm { padding: 2px 7px; font-size: 12px; border-radius: 5px; }
 .btn.xs { padding: 0 6px; font-size: 12px; line-height: 20px; border-radius: 4px; }
-.btn.on { background: var(--blood-dim); border-color: var(--blood); color: #ffd0d8; }
+.btn.on { background: var(--blood-dim); border-color: var(--blood); color: color-mix(in srgb, var(--blood-2) 25%, white); }
 .btn.b { color: var(--bash); } .btn.l { color: var(--leth); } .btn.a { color: var(--agg); }
 
 input[type=text], input[type=number], input:not([type]), select, textarea {
@@ -69,7 +126,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 /* Top bar */
 .topbar {
   position: sticky; top: 0; z-index: 20; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-  padding: 10px 16px; background: rgba(13, 11, 14, .92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+  padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 8px; }
 .brand-mark { color: var(--blood-2); font-size: 22px; }
@@ -105,7 +162,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .settings .setting input { position: absolute; opacity: 0; pointer-events: none; }
 .settings .sw { flex: none; width: 36px; height: 20px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line-2); position: relative; margin-top: 1px; transition: background .15s; }
 .settings .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
-.settings input:checked + .sw { background: #3b2a12; border-color: #8b6a2a; }
+.settings input:checked + .sw { background: color-mix(in srgb, var(--gold) 22%, var(--bg-2)); border-color: color-mix(in srgb, var(--gold) 65%, var(--bg-2)); }
 .settings input:checked + .sw::after { transform: translateX(16px); background: var(--gold); }
 .settings input:focus-visible + .sw { outline: 2px solid var(--blood-2); outline-offset: 2px; }
 .settings .txt { display: flex; flex-direction: column; gap: 2px; }
@@ -149,13 +206,35 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
   grid-template-columns: 52px 290px minmax(0, 1fr) 190px;
   grid-template-areas: "init left mid right" "det det det det";
 }
-.card.pc { border-left-color: var(--info); }
-.card.npc { border-left-color: var(--blood); }
-.card.current { box-shadow: 0 0 0 1px var(--blood-2), 0 0 24px rgba(224, 40, 74, .25); border-color: var(--blood-2); }
-.card.declaring { box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(201, 162, 74, .2); border-color: var(--gold); }
+/* Each card carries its side colour in --cat; the border is a quiet version of it, the left edge the full colour. */
+.card.pc.ally { --cat: var(--c-pc-ally); }
+.card.npc.ally { --cat: var(--c-npc-ally); }
+.card.npc.enemy { --cat: var(--c-npc-enemy); }
+.card.pc.enemy { --cat: var(--c-pc-enemy); }
+.card.ally, .card.enemy { border-color: color-mix(in srgb, var(--cat) 40%, var(--line)); border-left-color: var(--cat); }
+/* The active character glows in its own side colour. */
+.card.current { border-color: var(--cat, var(--blood-2)); box-shadow: 0 0 0 1px var(--cat, var(--blood-2)), 0 0 24px color-mix(in srgb, var(--cat, var(--blood-2)) 30%, transparent); }
+.card.declaring { box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); border-color: var(--gold); }
 .card.acted { opacity: .78; }
 .card.out { opacity: .5; filter: grayscale(.7); }
-.c-init { grid-area: init; }
+.c-init { grid-area: init; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+/* Portrait under the initiative box, framed in the card's side colour */
+.portrait { width: 52px; height: 58px; object-fit: cover; object-position: 50% 22%; border-radius: 0; border: 0; cursor: zoom-in; background: var(--bg-2); display: block; }
+/* With a portrait the initiative box is as slim as on a collapsed card (roll + rating move to its tooltip)
+ * and the portrait takes the rest of the card's height. */
+.c-init.has-portrait { gap: 4px; }
+.c-init.has-portrait .init { min-height: 26px; padding: 0 4px; }
+.c-init.has-portrait .init .v { font-size: 15px; }
+.c-init.has-portrait .init .r { display: none; }
+.c-init.has-portrait .init-input { width: 34px; font-size: 15px; }
+.c-init.has-portrait .init-input::placeholder { font-size: 10px; }
+.c-init.has-portrait .portrait { height: 60px; }
+.portrait.broken { object-position: center; opacity: .4; }
+.portrait-prev { width: 30px; height: 36px; object-fit: cover; object-position: 50% 22%; border-radius: 4px; border: 1px solid var(--line-2); flex: none; }
+.modal.portrait-dlg { width: auto; max-width: min(720px, 100%); margin-block: auto; }
+.modal-backdrop.portrait-dlg { padding-top: 12px; padding-bottom: 12px; }
+.portrait-view { display: flex; justify-content: center; }
+.portrait-view img { max-width: 100%; max-height: calc(100vh - 120px); border-radius: 8px; cursor: zoom-out; }
 .c-left { grid-area: left; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .c-mid { grid-area: mid; display: flex; flex-direction: column; gap: 5px; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); }
 .c-right { grid-area: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
@@ -193,31 +272,37 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .init .r { font-size: 10px; color: var(--faint); }
 .init.none .v { color: var(--faint); }
 .init.entry { border-color: var(--info); cursor: text; box-shadow: 0 0 0 1px rgba(90, 163, 224, .35); }
-.init.entry:focus-within { border-color: var(--blood-2); box-shadow: 0 0 0 2px rgba(224, 40, 74, .35); }
+.init.entry:focus-within { border-color: var(--blood-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blood-2) 35%, transparent); }
 .init-input { width: 42px; text-align: center; font-size: 20px; font-weight: 700; line-height: 1.1; padding: 0 !important; background: transparent !important; border: 0 !important; outline: none !important; }
 .init-input::placeholder { font-size: 12px; font-weight: 400; color: var(--faint); }
 .cname { font-weight: 600; font-size: 15px; }
 .badge { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap; }
 .badge.pc { border-color: #2f5c80; color: #9fcdf2; }
-.badge.state { border-color: var(--blood); color: #ff9aab; background: var(--blood-dim); }
+/* Descriptor pill: coloured by allegiance; an invisible dropdown on top switches it */
+.badge.desc { position: relative; cursor: pointer; }
+.badge.desc { border-color: color-mix(in srgb, var(--cat, var(--line-2)) 55%, var(--bg-2)); color: color-mix(in srgb, var(--cat, var(--muted)) 50%, white); }
+.badge.desc:hover { filter: brightness(1.2); }
+.allegiance-sel { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; font-size: 12px; }
+.allegiance-sel option { color: var(--text); background: var(--panel-2); }
+.badge.state { border-color: var(--blood); color: color-mix(in srgb, var(--blood-2) 50%, white); background: var(--blood-dim); }
 .badge.dead { border-color: #777; color: #ddd; background: #333; }
 .badge.chip { cursor: pointer; }
-.badge.chip.on { background: #3b2a12; color: #f2d08a; border-color: #8b6a2a; }
+.badge.chip.on { background: color-mix(in srgb, var(--gold) 22%, var(--bg-2)); color: color-mix(in srgb, var(--gold) 55%, white); border-color: color-mix(in srgb, var(--gold) 65%, var(--bg-2)); }
 
 /* Inactive section: combatants waiting to join */
 .inactive-head { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line-2); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); }
 .inactive-head .faint { text-transform: none; letter-spacing: 0; }
-.card.inactive { opacity: .7; border-style: dashed; border-left-style: solid; border-left-color: var(--line-2); }
+.card.inactive { opacity: .7; border-style: dashed; border-left-style: solid; }
 .card.inactive:hover { opacity: .95; }
 .btn.bench.on { color: var(--ok); border-color: #2f7a4f; }
 .badge.join { border-color: #2f7a4f; color: #9ff0c0; }
-.turn-info .status .warn { color: #ff9aab; }
-.turn-info .status .warn b { color: #ffd0d8; }
+.turn-info .status .warn { color: color-mix(in srgb, var(--blood-2) 50%, white); }
+.turn-info .status .warn b { color: color-mix(in srgb, var(--blood-2) 25%, white); }
 
 /* Collapsed card: one slim row — small initiative box, name + creature, buttons */
 .card.collapsed { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "init left right"; padding: 3px 8px; gap: 0 10px; align-items: center; }
 .card.collapsed { cursor: pointer; }
-.card.collapsed:hover { background: #201b22; }
+.card.collapsed:hover { background: var(--panel-2); }
 .card.collapsed .c-left { gap: 0; }
 .card.collapsed .c-right { align-items: center; }
 .card.collapsed .cname { font-size: 14px; }
@@ -260,7 +345,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .dots { display: flex; gap: 2px; flex-wrap: wrap; max-width: 154px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg-2); cursor: pointer; }
 .dot.f { background: var(--text); border-color: var(--text); }
-.dot.blood.f { background: var(--blood-2); border-color: var(--blood-2); }
+.dot.blood.f { background: var(--vitae); border-color: var(--vitae); }
 .dot.extra.f { background: var(--gold); border-color: var(--gold); }
 .sq { border-radius: 2px; }
 .stats-line { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
@@ -277,7 +362,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
   background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 5px; line-height: 1.25;
 }
 .wcol.unarmed .wchip2 { padding-right: 7px; }
-.wchip2:hover { border-color: var(--blood-2); background: #2a1419; }
+.wchip2:hover { border-color: var(--blood-2); background: color-mix(in srgb, var(--blood-2) 14%, var(--bg-2)); }
 .wchip2 .wn { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wchip2 .wd { font-size: 11px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; min-width: 0; white-space: nowrap; }
 .wchip2 .wdmg { flex: none; }
@@ -293,10 +378,10 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 }
 .wchip2 .wsel { position: absolute; top: 0; right: 0; bottom: 0; width: 20px; border-left: 1px solid var(--line-2) !important; color: transparent;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a8d97'/%3E%3C/svg%3E") center / 8px no-repeat; }
-.wchip2 .wsel:hover { background-color: #3a2a30; }
+.wchip2 .wsel:hover { background-color: color-mix(in srgb, var(--blood-2) 14%, var(--panel-2)); }
 .wsel option, .wsel optgroup { color: var(--text); background: var(--panel-2); }
 .wsel.add { border: 1px dashed var(--line-2) !important; border-radius: 5px; padding: 6px 8px !important; text-align: left; }
-.wsel.add:hover { color: var(--text); border-color: #66566c !important; }
+.wsel.add:hover { color: var(--text); border-color: color-mix(in srgb, var(--line-2) 70%, var(--text)) !important; }
 .wsel.add.more { position: absolute; top: -7px; right: -6px; width: 16px; height: 16px; padding: 0 !important; font-size: 11px; line-height: 14px; text-align: center;
   border-radius: 50%; border-style: solid !important; background: var(--panel); opacity: 0; transition: opacity .12s; }
 .card:hover .wsel.add.more, .wsel.add.more:focus { opacity: 1; }
@@ -307,7 +392,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
   display: inline-flex; gap: 5px; align-items: center; background: var(--bg-2); border: 1px solid var(--line-2);
   border-radius: 5px; padding: 1px 7px; cursor: pointer; font-size: 12px; line-height: 18px;
 }
-.wchip:hover { border-color: var(--blood-2); background: #2a1419; }
+.wchip:hover { border-color: var(--blood-2); background: color-mix(in srgb, var(--blood-2) 14%, var(--bg-2)); }
 .wchip .dmg { color: var(--muted); }
 .wchip .ammo { color: var(--gold); }
 .wchip .btn.reload { line-height: 14px; padding: 0 4px; }
@@ -315,6 +400,14 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 
 .details { grid-area: det; border-top: 1px dashed var(--line); padding-top: 6px; font-size: 12px; color: var(--muted); }
 .details b { color: var(--text); font-weight: 600; }
+/* Expanded card: a tall portrait to the left of the full stats */
+.details.with-portrait { display: flex; gap: 14px; align-items: flex-start; }
+.details .details-text { flex: 1; min-width: 0; }
+/* Collapsed card: a thumbnail between the initiative box and the name */
+.portrait-xs { width: 22px; height: 26px; object-fit: cover; object-position: 50% 22%; flex: none; cursor: zoom-in; display: block; }
+/* the small header portrait steps aside while the tall one is showing */
+.card.expanded .c-init .portrait { display: none; }
+.portrait-lg { width: 120px; height: 160px; object-fit: cover; object-position: 50% 22%; flex: none; cursor: zoom-in; background: var(--bg-2); display: block; }
 
 /* Modal */
 .modal-backdrop {
@@ -346,7 +439,7 @@ label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--
 .wgroup { display: inline-flex; }
 .wgroup .wchip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .wreload { background: var(--bg-2); border: 1px solid var(--line-2); border-left: 0; border-radius: 0 6px 6px 0; color: var(--gold); padding: 0 8px; cursor: pointer; font-size: 14px; }
-.wreload:hover:not(:disabled) { background: #3a2a30; color: var(--text); }
+.wreload:hover:not(:disabled) { background: color-mix(in srgb, var(--blood-2) 14%, var(--panel-2)); color: var(--text); }
 .wreload:disabled { color: var(--faint); cursor: default; }
 .wchip .ammo.out { color: var(--leth); }
 .modal.attack .ammo-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 2px 0 4px; }
@@ -384,10 +477,10 @@ button.wchip { font: inherit; font-size: 12px; color: var(--text); }
 .tchip b { font-weight: 600; }
 .tchip small { color: var(--muted); font-size: 11px; }
 .tchip small .hurt { color: #f0a0aa; }
-.tchip:hover { border-color: #7a6a80; background: #2c2630; }
-.tchip.on { border-color: var(--blood-2); background: #3a1820; box-shadow: 0 0 0 1px var(--blood-2); }
+.tchip:hover { border-color: color-mix(in srgb, var(--line-2) 60%, var(--text)); background: color-mix(in srgb, var(--panel-2) 88%, var(--text)); }
+.tchip.on { border-color: var(--blood-2); background: color-mix(in srgb, var(--blood-2) 18%, var(--bg-2)); box-shadow: 0 0 0 1px var(--blood-2); }
 .tchip.on b::before { content: "◎ "; color: var(--blood-2); }
-.tchip.on small { color: #d7b8be; }
+.tchip.on small { color: color-mix(in srgb, var(--blood-2) 20%, var(--text)); }
 .tchip.out { opacity: .5; }
 .seg { display: inline-flex; flex-wrap: wrap; }
 .seg button {
@@ -396,7 +489,7 @@ button.wchip { font: inherit; font-size: 12px; color: var(--text); }
 .seg button:first-child { border-radius: 5px 0 0 5px; margin-left: 0; }
 .seg button:last-child { border-radius: 0 5px 5px 0; }
 .seg button:hover { color: var(--text); }
-.seg button.on { background: var(--blood-dim); border-color: var(--blood); color: #ffd0d8; position: relative; }
+.seg button.on { background: var(--blood-dim); border-color: var(--blood); color: color-mix(in srgb, var(--blood-2) 25%, white); position: relative; }
 .mods { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 8px; border-top: 1px solid var(--line); }
 .af { display: flex; flex-direction: column; gap: 3px; }
 .af label { font-size: 11px; color: var(--muted); }
@@ -418,10 +511,10 @@ button.wchip { font: inherit; font-size: 12px; color: var(--text); }
 .die { width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; background: #2a2530; border: 1px solid var(--line-2); color: var(--muted); }
 .die.s { background: #183626; border-color: #2f7a4f; color: #9ff0c0; }
 .die.one { background: #3a1016; border-color: #8a2a36; color: #ff8a9b; }
-.die.auto { background: #3b2a12; border-color: #8b6a2a; color: #f2d08a; }
+.die.auto { background: color-mix(in srgb, var(--gold) 22%, var(--bg-2)); border-color: color-mix(in srgb, var(--gold) 65%, var(--bg-2)); color: color-mix(in srgb, var(--gold) 55%, white); }
 .result { font-weight: 700; }
 .result.good { color: var(--ok); } .result.bad { color: var(--leth); } .result.botch { color: #ff5b74; text-transform: uppercase; }
-.note { font-size: 12px; color: var(--muted); background: #1a1520; border-left: 3px solid var(--gold); padding: 6px 8px; border-radius: 4px; margin-top: 6px; }
+.note { font-size: 12px; color: var(--muted); background: var(--bg-2); border-left: 3px solid var(--gold); padding: 6px 8px; border-radius: 4px; margin-top: 6px; }
 
 /* Log */
 .log-entry { border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 12px; }

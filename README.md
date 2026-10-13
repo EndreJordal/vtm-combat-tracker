@@ -309,6 +309,14 @@ https://endrejordal.github.io/vtm-combat-tracker/#encounter=eyJuYW1lIjoiVGhlIExh
 
 ---
 
+### Linked from imagineVTT
+
+imagineVTT (`https://endrejordal.github.io/imagineVTT/`) can open the tracker in its own window and run a fight with it: the campaign bible's **Start in imagineVTT** links go through imagineVTT, which hands the encounter (the same payload as above) to the tracker. From then on the tracker reports the fight after every change: imagineVTT shows the order of initiative to the players and saves the whole fight inside its scene, so it can be resumed next week. The header shows **● imagineVTT** while linked.
+
+- Entries may carry a `vtt` object (how the combatant's token looks in imagineVTT: `border`, `color`, `type`, `size`, `label`). The tracker keeps it on the combatant and otherwise ignores it.
+- A linked fight carries a `linkId` in the saved combat. imagineVTT only takes the state of the fight that belongs to its scene, so fights run here on their own are never touched. **End combat** ends the link too; imagineVTT keeps its copy and can put it back (**Resume**).
+- Only the window imagineVTT opened takes part; other tabs work as before. The code is `js/imagine-link.js`; the design is `docs/combat-link.md` in imagineVTT.
+
 ## Preset antagonists
 
 Use the **ID** in encounter links. *Carries* is the loadout a preset starts with; *Also favored* are the extra weapons at the top of its swap dropdowns. Full stats, specials and gear notes are in each card's details (▾). Weapon IDs are listed in the [weapon catalog](#weapon-catalog).

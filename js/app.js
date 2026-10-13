@@ -558,6 +558,7 @@ function resetCombat() {
  * Rendering
  * ============================================================ */
 function render() {
+  window.imagineLink?.changed(); // report the change to imagineVTT, if linked (js/imagine-link.js)
   $('#encounterName').value = combat.name || '';
   const hasNotes = !!(combat.notes || '').trim();
   $('#btnNotes').classList.toggle('has-notes', hasNotes);
@@ -1787,6 +1788,7 @@ function loadPayload(payload) {
         if (!c) continue;
         if (e.inactive) c.inactive = true; // starts in the Inactive section, joins later
         if (e.allegiance === 'ally' || e.allegiance === 'enemy') c.allegiance = e.allegiance;
+        if (e.vtt && typeof e.vtt === 'object') c.vtt = e.vtt; // how imagineVTT draws its token (js/imagine-link.js)
         applyState(c, e.custom ? { ...e.custom, ...e } : e);
         addCombatant(c);
       }
